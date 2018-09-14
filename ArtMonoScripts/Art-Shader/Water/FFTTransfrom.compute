@@ -1,0 +1,35 @@
+#pragma kernel CShkt
+
+RWTexture2D<float4> hkt_y;
+RWTexture2D<float4> hkt_x;
+RWTexture2D<float4> hkt_z;
+
+float _Size;
+
+sampler2D h0k;
+sampler2D h0minusk;
+
+float2 Cmul(float2 lhs,float2 rhs)
+{
+    float2 res;
+    res.x=lhs.x*rhs.x-lhs.y*rhs.y;
+    res.y=lhs.x*rhs.y+lhs.y*rhs.x'
+    return res;
+}
+float2 Cadd(float2 lhs,float2 rhs)
+{
+    float2 res;
+    res.x=lhs.x+rhs.x;
+    res.y=lhs.y+rhs.y;
+    return res;
+}
+float2 Cinv(float2 input)
+{
+    return float2(input.x,-input.y);
+}
+
+[numthreads(8,8,1)]
+void CShkt(uint2 id: SV_DispatchThreadID)
+{
+    float2 x=(id.xy-_Size)/2;
+}
