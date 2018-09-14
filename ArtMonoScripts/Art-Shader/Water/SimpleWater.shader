@@ -9,28 +9,28 @@ Shader "Lyf/Environment/SimpleWater"
         _BoardColor("Board Color",Color)=(0,0.14,0.224,1)
         _BoardTex("Board Tex",2D)="white"{}
         _LightReflectionColor("Light Front Color",Color)=(0.641,0.775,0.121,1)
-        _LightReflectionBackColor("Light Back Color",Color)=(0.641,0.775,0.121,1)
+        _LightReflectionBackColor("Light Back Color",Color)=(0.141,0.175,0.121,1)
         _MainTex("Main Tex",2D)= "white"{}
         _WaveMap("Wave Map",2D)= "bump"{}
         _WaveHeight("Wave Height",2D)="black"{}
-        _WaveSpeed("Wave Speed",Vector)=(0.0001,0.0001,0.001,0.001)
+        _WaveSpeed("Wave Speed",Vector)=(0.0001,0.0001,0.5,0.5)
         _Distortion("Reflection Distortion",Range(0,100))=10
-        _RefractionDistortion("Refraction Distortion",Range(0,100))=10
-        _FresnelMax("FresnelMax",Range(0,1))=0.4
+        _RefractionDistortion("Refraction Distortion",Range(0,100))=5
+        _FresnelMax("FresnelMax",Range(0,1))=0.5
         _ShadowIntensity ("ShadowIntensity",Range(0,1))=0.5
-        _WaveScale("Wave Scale",Range(0.1,100))=0.1
-        _LightReflectionScale("Light Scale",Range(0,40))=2
-        _ColorAlpha("Color Alpha",Range(0,1))=0.5
+        _WaveScale("Wave Scale",Range(0.1,100))=3
+        _LightReflectionScale("Light Scale",Range(0,40))=10
+        _ColorAlpha("Color Alpha",Range(0,1))=0.3
         _LightSepcularScale("Light Specular Scale",Range(0,40))=12
-        _TessellationScale("Tessellation Scale",Range(0,1000))=2
-        _BiTangent("BiTangent",Vector)=(0,1,0,0)
+        _TessellationScale("Tessellation Scale",Range(0,1000))=190
+        _BiTangent("BiTangent",Vector)=(0.71,1,0.1,0)
         _AlignmentNormal("Alignment Normal",Vector)=(0,1,0,0)
-        _AlignmentLight("Alignment Light",Vector)=(0,1,0,0)
-        _RefractionAlpha("Refraction Alpha",Range(0.001,1))=0.5
+        _AlignmentLight("Alignment Light",Vector)=(1.63,1,0.29,0)
+        _RefractionAlpha("Refraction Alpha",Range(0.001,1))=0.3
     }
     SubShader
     {
-        Tags {"LightMode"="ForwardBase" "Queue"="Geometry" "RenderType"="Opaque"}
+        Tags {"LightMode"="ForwardBase" "Queue"="Transparent" "RenderType"="Opaque"}
         GrabPass{"_RefractionTex"}
         Pass
         {
@@ -193,13 +193,17 @@ Shader "Lyf/Environment/SimpleWater"
                 //return depth;
                 fixed3 refrCol=tex2Dproj(_RefractionTex,grpos).rgb;
                 relDepth=smoothstep(0.001,0.5,relDepth);
+                float rD=relDepth;
                 float boardDepth=smoothstep(1-0.00000003,1,1-relDepth);
                 relDepth=depth-planedepth;
                 relDepth=smoothstep(0.001,0.5,relDepth);
-                relDepth+=(1 - flag);
+                relDepth*=flag;
+                relDepth+=(1-flag)*rD;
+                //relDepth+=(1 - flag);
                 //return relDepth;
                 _BoardColor=tex2D(_BoardTex,half2((wpos.z+wpos.x)/2,boardDepth));
                 relDepth=pow(relDepth,_RefractionAlpha);
+                relDepth=saturate(relDepth);
                 refrCol=lerp(refrCol,_Color,relDepth);
                 //relDepth=smoothstep(-0.01,-0.001,relDeptuh);
                 //return step(-0.01,relDepth);

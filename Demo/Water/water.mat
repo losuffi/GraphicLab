@@ -12,8 +12,9 @@ Material:
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 3000
+  stringTagMap:
+    RenderType: Transparent
   disabledShaderPasses: []
   m_SavedProperties:
     serializedVersion: 3
@@ -68,23 +69,23 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _BumpScale: 1
-    - _ColorAlpha: 0
+    - _ColorAlpha: 0.158
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _Distortion: 13
     - _DstBlend: 0
-    - _FresnelMax: 0.4
+    - _FresnelMax: 0.534
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _LightReflectionScale: 5.7
+    - _LightReflectionScale: 17.3
     - _LightSepcularScale: 12
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _RefractionAlpha: 0.384
-    - _RefractionDistortion: 5.8
+    - _RefractionDistortion: 5.2
     - _ShadowIntensity: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
@@ -92,13 +93,13 @@ Material:
     - _TessellationScale: 190
     - _UVSec: 0
     - _WaveScale: 3
-    - _ZWrite: 1
+    - _ZWrite: 0
     m_Colors:
     - _AlignmentLight: {r: 1.63, g: 1, b: 0.29, a: 0}
     - _AlignmentNormal: {r: 0, g: 1, b: 0, a: 0}
     - _BiTangent: {r: 0.71, g: 1, b: 0.1, a: 0}
     - _BoardColor: {r: 0, g: 0.14, b: 0.224, a: 1}
-    - _Color: {r: 0, g: 0.8962264, b: 0.23552807, a: 1}
+    - _Color: {r: 0.41651833, g: 0.7441322, b: 0.754717, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _LightReflectionBackColor: {r: 0.1509879, g: 0.1745126, b: 0.2735849, a: 1}
     - _LightReflectionColor: {r: 0.4707191, g: 0.7735849, b: 0.7589164, a: 1}
