@@ -54,6 +54,10 @@ Shader "Lyf/Environment/SimpleWater"
             sampler2D _CameraDepthTexture;
             float4 _RefractionTex_TexelSize,_BiTangent,_WaveSpeed,_AlignmentNormal,_AlignmentLight;
             float4x4 _WTC;
+            
+            //From CS
+            sampler2D _DispCS,_NormCS;
+
             struct v2f
             {
                 float4 pos:SV_POSITION;
@@ -90,23 +94,30 @@ Shader "Lyf/Environment/SimpleWater"
                 // height+=tex2Dlod(_WaveHeight,nuv*32+float4(-speed,0,0)).r*_WaveScale;
                 return height;
             }
+            inline float3 MovePos(float4 nuv)
+            {
+                return tex2Dlod(_DispCS,nuv).xyz;
+            }
             inline float3 getBump(float4 buv,float2 speed)
             {
                 buv.xy+=speed;
                 float3 b= UnpackNormal(tex2D(_WaveMap,buv.xy)).rgb;
                 return b;
             }
-            inline float4 HeightPoint(float4 uv,inout float3 normal,float4 oPos,inout float3 tangent)
+            inline float4 HeightPoint(float4 uv,float3 normal,float4 oPos,float3 tangent)
             {
                 float4 wpos=mul(unity_ObjectToWorld,oPos);   
                 float2 speed=_Time.y*_WaveSpeed.xy;
                 float4 nuv=uv+float4(speed,0,0);
-                float height=getHeight(nuv,speed);
-                float3 oldPos=wpos-tangent*(_WaveScale);
+                //float height=getHeight(nuv,speed);
+                //float3 oldPos=wpos-tangent*(_WaveScale);
                 float3 bitangent =normalize(cross(normal,tangent));
-                wpos.xyz+=height*normalize(normal);
-                tangent=normalize(wpos-oldPos);
-                normal=normalize(cross(tangent,bitangent));
+                //wpos.xyz+=height*normalize(normal);
+                wpos.xyz+=MovePos(uv);
+                //tangent=normalize(wpos-oldPos);
+                //normal=normalize(cross(tangent,bitangent));
+               // normal=normalize(float3(tex2Dlod(_NormCS,uv).xy,1));
+                //tangent=normalize(cross(bitangent,normal));
                 return mul(unity_WorldToObject,wpos);
             }
             v2f TessellationVertex(TVD v)
@@ -165,8 +176,9 @@ Shader "Lyf/Environment/SimpleWater"
                 fixed3 viewDir=normalize(_WorldSpaceCameraPos-wpos);
                 float2 speed=_Time.y*_WaveSpeed.zw;
                 //float3 bump=normalize(i.tangentToWorld[2].xyz);
+                float3 bump=UnpackNormal(tex2D(_NormCS,i.uv.zw)).xyz;
                 float3 biT=normalize(i.tangentToWorld[1].xyz);
-                float3 bump=getBump(float4(i.uv.zw,0,0),speed);
+                //float3 bump=getBump(float4(i.uv.zw,0,0),speed);
                 // float3 bump2=UnpackNormal(tex2D(_WaveMap,(i.uv.zw-speed))).rgb;
                 // float3 bump=normalize(bump1+bump2);
                 float2 ofs=(bump.xy);
@@ -210,7 +222,7 @@ Shader "Lyf/Environment/SimpleWater"
                 fixed3 reflCol=tex2Dproj(_MainTex,UNITY_PROJ_COORD(i.screenPos)).rgb;
 
                 //bump=i.tangentToWorld[2].xyz;
-                bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
+                //bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
                 
                 
                 #if defined(SHADOWS_SCREEN) && defined(_RECSHADOW)

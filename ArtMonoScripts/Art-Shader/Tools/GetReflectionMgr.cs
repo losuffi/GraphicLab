@@ -8,6 +8,8 @@ public class GetReflectionMgr : MonoBehaviour {
 	private Transform SymmetricalObject;
 	[SerializeField]
 	private Transform plane;
+    [SerializeField]
+	private FFTWave wave;
     
     private Camera waterCam;
     private Camera cam;
@@ -60,6 +62,8 @@ public class GetReflectionMgr : MonoBehaviour {
         GL.invertCulling=false;
         mat.SetMatrix("_WTC",cam.worldToCameraMatrix);
         mat.SetTexture("_MainTex",a);
+        mat.SetTexture("_NormCS",wave.normalMap);
+        mat.SetTexture("_DispCS",wave.displacementMap);
     }
     static Matrix4x4 CalculateReflectionMatrix(Matrix4x4 reflectionMat, Vector4 plane)
     {

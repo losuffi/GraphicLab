@@ -8,43 +8,44 @@ float _G;
 float _Length;
 float _A;
 RWTexture2D<float4> phillipsSpectrumResH0K;
-RWTexture2D<float4> phillipsSpectrumResH0MINUSK;
+RWTexture2D<float4> phillipsSpectrumRes_Minus_H0K;
 
-sampler2D noise_R1;
-sampler2D noise_I1;
-sampler2D noise_R2;
-sampler2D noise_I2;
+Texture2D<float> noise_R1;
+Texture2D<float> noise_I1;
+Texture2D<float> noise_R2;
+Texture2D<float> noise_I2;
 float4 gaussRND(float2 uv)
 {
-    float noise00=clamp(tex2Dlod(noise_R1,float4(uv,0,0)).r,0.001,1);
-    float noise01=clamp(tex2Dlod(noise_I1,float4(uv,0,0)).r,0.001,1);
-    float noise02=clamp(tex2Dlod(noise_R2,float4(uv,0,0)).r,0.001,1);
-    float noise03=clamp(tex2Dlod(noise_I2,float4(uv,0,0)).r,0.001,1);
+    float noise00=clamp(noise_R1[uv],0.001,1);
+    float noise01=clamp(noise_I1[uv],0.001,1);
+    float noise02=clamp(noise_R2[uv],0.001,1);
+    float noise03=clamp(noise_I2[uv],0.001,1);
 
     float u0=PI2*noise00;
     float v0=sqrt(-2.0*log(noise01));
     float u1=PI2*noise02;
     float v1=sqrt(-2.0*log(noise03));
     float4 rnd=float4(v0*cos(u0),v0*sin(u0),v1*cos(u1),v1*sin(u1));
+    return rnd;
 }
 
 [numthreads(8,8,1)]
 void phillipsSpectrum(uint2 id:SV_DispatchThreadID)
 {
-    int2 center=_Size.xx/2;
-    int coord=id.xy-center;
+    uint2 center=_Size.xx/2;
+    uint2 coord=id.xy-center;
     float2 k=PI2*coord/_Size;
     float klength=length(k);
-    if(klength<0.0001) klength=0.0001
+    if(klength<0.0001) klength=0.0001;  
     float klength2=klength*klength;
     float wlength=length(_Wind.xy);
     float L=wlength*wlength/_G;
     float damping=0.001;
     float L2=L*L;
     //sqrt(Ph(k))/sqrt(2)
-    float h0K=clamp(sqrt(_A/(klength2*klength2)*pow(dot(normalize(k),normalize(_Wind.xy),4))*exp(-(1/(klength2*L2)))*exp(-klength2*L2*damping*damping))/sqrt(2),0,1000000);
-    float h0minusK=clamp(sqrt(_A/(klength2*klength2)*pow(dot(normalize(-k),normalize(_Wind.xy),4))*exp(-(1/(klength2*L2)))*exp(-klength2*L2*damping*damping))/sqrt(2),0,1000000);
-    float4 gauss_random=gaussRND();
-    phillipsSpectrumResH0K[id.xy]=float4(gauss_random*h0K,0,1);
-    phillipsSPectrumResH0MINUSK[id.xy]=float4(gauss_random*h0minusK,0,1);
+    float h0K=clamp(sqrt(_A/(klength2*klength2)*pow(dot(normalize(k),normalize(_Wind.xy)),4)*exp(-(1/(klength2*L2)))*exp(-klength2*L2*damping*damping))/sqrt(2),0,1000000);
+    float h0minusK=clamp(sqrt(_A/(klength2*klength2)*pow(dot(normalize(-k),normalize(_Wind.xy)),4)*exp(-(1/(klength2*L2)))*exp(-klength2*L2*damping*damping))/sqrt(2),0,1000000);
+    float4 gauss_random=gaussRND(id.xy);
+    phillipsSpectrumResH0K[id.xy]=float4(gauss_random.xy*h0K,0,1);
+    phillipsSpectrumRes_Minus_H0K[id.xy]=float4(gauss_random.zw*h0minusK,0,1);
 }
