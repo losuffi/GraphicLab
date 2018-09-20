@@ -64,6 +64,7 @@ public class GetReflectionMgr : MonoBehaviour {
         mat.SetTexture("_MainTex",a);
         mat.SetTexture("_NormCS",wave.normalMap);
         mat.SetTexture("_DispCS",wave.displacementMap);
+        mat.SetFloat("_Choppiness",wave.chopponess);
     }
     static Matrix4x4 CalculateReflectionMatrix(Matrix4x4 reflectionMat, Vector4 plane)
     {

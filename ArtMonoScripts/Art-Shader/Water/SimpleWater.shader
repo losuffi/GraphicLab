@@ -57,6 +57,7 @@ Shader "Lyf/Environment/SimpleWater"
             
             //From CS
             sampler2D _DispCS,_NormCS;
+            float _Choppiness;
 
             struct v2f
             {
@@ -96,7 +97,7 @@ Shader "Lyf/Environment/SimpleWater"
             }
             inline float3 MovePos(float4 nuv)
             {
-                return tex2Dlod(_DispCS,nuv).xyz;
+                return tex2Dlod(_DispCS,nuv).xyz*_Choppiness;
             }
             inline float3 getBump(float4 buv,float2 speed)
             {
@@ -104,20 +105,12 @@ Shader "Lyf/Environment/SimpleWater"
                 float3 b= UnpackNormal(tex2D(_WaveMap,buv.xy)).rgb;
                 return b;
             }
-            inline float4 HeightPoint(float4 uv,float3 normal,float4 oPos,float3 tangent)
+            inline float4 HeightPoint(float4 uv,float4 oPos)
             {
                 float4 wpos=mul(unity_ObjectToWorld,oPos);   
                 float2 speed=_Time.y*_WaveSpeed.xy;
                 float4 nuv=uv+float4(speed,0,0);
-                //float height=getHeight(nuv,speed);
-                //float3 oldPos=wpos-tangent*(_WaveScale);
-                float3 bitangent =normalize(cross(normal,tangent));
-                //wpos.xyz+=height*normalize(normal);
                 wpos.xyz+=MovePos(uv);
-                //tangent=normalize(wpos-oldPos);
-                //normal=normalize(cross(tangent,bitangent));
-               // normal=normalize(float3(tex2Dlod(_NormCS,uv).xy,1));
-                //tangent=normalize(cross(bitangent,normal));
                 return mul(unity_WorldToObject,wpos);
             }
             v2f TessellationVertex(TVD v)
@@ -128,7 +121,7 @@ Shader "Lyf/Environment/SimpleWater"
                 float3 wn=UnityObjectToWorldNormal(v.normal);
                 float4 huv=float4(o.uv.xy,0,0);
                 float3 tangent=v.tangent.xyz;
-                float4 opos=HeightPoint(huv,wn,v.vertex,tangent);
+                float4 opos=HeightPoint(huv,v.vertex);
                 o.pos=UnityObjectToClipPos(opos);
                 o.screenPos=ComputeScreenPos(o.pos);
                 float4 tangentworld=float4(UnityObjectToWorldDir(tangent),v.tangent.w);
@@ -176,7 +169,8 @@ Shader "Lyf/Environment/SimpleWater"
                 fixed3 viewDir=normalize(_WorldSpaceCameraPos-wpos);
                 float2 speed=_Time.y*_WaveSpeed.zw;
                 //float3 bump=normalize(i.tangentToWorld[2].xyz);
-                float3 bump=UnpackNormal(tex2D(_NormCS,i.uv.zw)).xyz;
+                float3 bump=(tex2Dlod(_NormCS,float4(i.uv.zw,0,0) )).xyz;
+                //return fixed4(bump,1);
                 float3 biT=normalize(i.tangentToWorld[1].xyz);
                 //float3 bump=getBump(float4(i.uv.zw,0,0),speed);
                 // float3 bump2=UnpackNormal(tex2D(_WaveMap,(i.uv.zw-speed))).rgb;
@@ -222,7 +216,7 @@ Shader "Lyf/Environment/SimpleWater"
                 fixed3 reflCol=tex2Dproj(_MainTex,UNITY_PROJ_COORD(i.screenPos)).rgb;
 
                 //bump=i.tangentToWorld[2].xyz;
-                //bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
+                bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
                 
                 
                 #if defined(SHADOWS_SCREEN) && defined(_RECSHADOW)
@@ -233,12 +227,13 @@ Shader "Lyf/Environment/SimpleWater"
                 //atten=1;
                 
                 atten=lerp((1-_ShadowIntensity),1,atten);
-                half3 T=normalize(cross(_BiTangent.xyz,bump));
-                //half3 T=normalize(_BiTangent.xyz);
+                half3 T=normalize(cross(i.tangentToWorld[1].xyz,bump));
                 //half nv=sqrt(1-dot(viewDir,T)*dot(viewDir,T));
-                half3 l=_AlignmentLight.xyz;
+                //half3 l=_AlignmentLight.xyz;
+                half3 l=_WorldSpaceLightPos0.xyz;
                 half nv=saturate(dot(viewDir,_AlignmentNormal.xyz));
-                half nl=sqrt(1-dot(l,T)*dot(l,T));
+                //half nl=sqrt(dot(l,T)*dot(l,T));
+                half nl=saturate(dot(l,bump));
                 half df=saturate((nl))*atten;
                 half3 h=normalize(viewDir+l);
                 //half TH=dot(T,h);

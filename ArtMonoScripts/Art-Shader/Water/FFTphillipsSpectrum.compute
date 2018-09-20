@@ -1,14 +1,15 @@
 #pragma kernel phillipsSpectrum
 #define PI		3.14159265358f
 #define PI2		6.28318530717f
-
+#define HPI		1.57079632679f
+#define INVPI2	0.63661977236f
 uint _Size;
+float domainSize;
 float4 _Wind;
 float _G;
 float _Length;
 float _A;
 RWTexture2D<float4> phillipsSpectrumResH0K;
-RWTexture2D<float4> phillipsSpectrumRes_Minus_H0K;
 
 Texture2D<float> noise_R1;
 Texture2D<float> noise_I1;
@@ -28,24 +29,79 @@ float4 gaussRND(float2 uv)
     float4 rnd=float4(v0*cos(u0),v0*sin(u0),v1*cos(u1),v1*sin(u1));
     return rnd;
 }
-
+uint _rngState;
+uint Rand()
+{
+    _rngState ^= (_rngState << 13);
+	_rngState ^= (_rngState >> 17);
+	_rngState ^= (_rngState << 5);
+	return _rngState;
+}
+float RandFloat()
+{
+    return Rand()/4294967296.0f;
+}
+float RandGauss()
+{
+    float u1=RandFloat();
+    float u2=RandFloat();
+    if(u1<1e-6f)
+        u1=1e-6f;
+    return sqrt(-2.0*log(u1))*cos(PI2*u2);
+}
+uint HASH(uint seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+	seed *= 9;
+	seed = seed ^ (seed >> 4);
+	seed *= 0x27d4eb2d;
+	seed = seed ^ (seed >> 15);
+	return seed;
+}
+float PosCosSquaredDirectionalSpreading(float w, float theta, float kMag, float dTheta)
+{
+	if (theta > -HPI && theta < HPI)
+	{
+		float ct = cos(theta);
+		return INVPI2 * (ct * ct);
+	}
+	else
+	{
+		return 0.0f;
+	}
+}
 [numthreads(8,8,1)]
 void phillipsSpectrum(uint2 id:SV_DispatchThreadID)
 {
-    uint2 center=_Size.xx/2;
-    uint2 coord=id.xy-center;
-    float2 k=PI2*coord/_Size;
+    int2 center=_Size.xx/2;
+    int2 coord=id.xy-center;
+    _rngState=HASH(id.y*_Size+id.x);
+    float2 k=PI2*coord/domainSize;
     float klength=length(k);
     if(klength<0.0001) klength=0.0001;  
     float klength2=klength*klength;
-    float wlength=length(_Wind.xy);
-    float L=wlength*wlength/_G;
-    float damping=0.001;
-    float L2=L*L;
-    //sqrt(Ph(k))/sqrt(2)
-    float h0K=clamp(sqrt(_A/(klength2*klength2)*pow(dot(normalize(k),normalize(_Wind.xy)),4)*exp(-(1/(klength2*L2)))*exp(-klength2*L2*damping*damping))/sqrt(2),0,1000000);
-    float h0minusK=clamp(sqrt(_A/(klength2*klength2)*pow(dot(normalize(-k),normalize(_Wind.xy)),4)*exp(-(1/(klength2*L2)))*exp(-klength2*L2*damping*damping))/sqrt(2),0,1000000);
-    float4 gauss_random=gaussRND(id.xy);
-    phillipsSpectrumResH0K[id.xy]=float4(gauss_random.xy*h0K,0,1);
-    phillipsSpectrumRes_Minus_H0K[id.xy]=float4(gauss_random.zw*h0minusK,0,1);
+    float w=sqrt(abs(_G*klength));
+    float dwdk=_G/(2*w);
+    float B=_G/length(_Wind.xy);
+    float temp=_G/pow(w,5);
+    float s=(0.01*_G*temp)*exp(-B*pow(1/w,4));
+    float dk=PI2/domainSize;
+    float thetaPos=atan2(-k.y,k.x);
+    float thetaNeg=atan2(k.y,-k.x);
+    float dTheta=abs(atan2(dk,klength));
+    float sp=s;
+    float sn=s;
+    sp*=PosCosSquaredDirectionalSpreading(w,thetaPos,klength,dTheta);
+    sn*=PosCosSquaredDirectionalSpreading(w,thetaNeg,klength,dTheta);
+    sp*=(dk*dk)*dwdk/klength;
+    sn*=(dk*dk)*dwdk/klength;
+    float ap=RandGauss()*sqrt(abs(sp)*2.0);
+    float an=RandGauss()*sqrt(abs(sn)*2.0);
+
+    float rA=RandFloat()*PI2;
+    float rb=RandFloat()*PI2;
+    float2 randA=float2(cos(rA),-sin(rA));
+    float2 randB=float2(cos(rb),-sin(rb));
+
+    phillipsSpectrumResH0K[id]=float4(ap*randA,an*randB);
 }
