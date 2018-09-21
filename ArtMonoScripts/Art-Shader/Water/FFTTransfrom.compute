@@ -128,7 +128,7 @@ void FFT(uint2 id:SV_DispatchThreadID)
         output[id]=cacheStructer[x][source];
     #else
         const float sign = ((id.x + id.y) % 2) == 1 ? -1.0f : 1.0f;
-        output[id]=sign* (cacheStructer[x][source].x);
+        output[id]= sign*(cacheStructer[x][source].x);
     #endif
 }
 RWTexture2D<float4> DispOut;

@@ -18,7 +18,8 @@ Shader "Lyf/Environment/SimpleWater"
         _RefractionDistortion("Refraction Distortion",Range(0,100))=5
         _FresnelMax("FresnelMax",Range(0,1))=0.5
         _ShadowIntensity ("ShadowIntensity",Range(0,1))=0.5
-        _WaveScale("Wave Scale",Range(0.1,100))=3
+        //_WaveScale("Wave Scale",Range(0.1,100))=3
+        _JitterDepthScale("Jitter Scale",Range(0,5))=0.5
         _LightReflectionScale("Light Scale",Range(0,40))=10
         _ColorAlpha("Color Alpha",Range(0,1))=0.3
         _LightSepcularScale("Light Specular Scale",Range(0,40))=12
@@ -49,7 +50,7 @@ Shader "Lyf/Environment/SimpleWater"
             sampler2D _WaveMap,_WaveHeight,_BoardTex;
             float4 _WaveMap_ST,_WaveHeight_ST;
             fixed4 _ReflectColor,_LightReflectionColor,_LightReflectionBackColor,_BoardColor;
-            float _Distortion,_RefractionDistortion,_ShadowIntensity,_FresnelMax,_WaveScale,_LightReflectionScale,_LightSepcularScale,_ColorAlpha,_RefractionAlpha;
+            float _JitterDepthScale,_Distortion,_RefractionDistortion,_ShadowIntensity,_FresnelMax,_WaveScale,_LightReflectionScale,_LightSepcularScale,_ColorAlpha,_RefractionAlpha;
             sampler2D _RefractionTex;
             sampler2D _CameraDepthTexture;
             float4 _RefractionTex_TexelSize,_BiTangent,_WaveSpeed,_AlignmentNormal,_AlignmentLight;
@@ -67,44 +68,44 @@ Shader "Lyf/Environment/SimpleWater"
                 float4 tangentToWorld[3]:TEXCOORD2;
                 SHADOW_COORDS(5)
             };
-            inline float getHeight(float4 nuv,float2 speed)
-            {
-                float height= tex2Dlod(_WaveHeight,nuv/128+float4(speed*100,0,0)).r*_WaveScale*1;
-                height+= tex2Dlod(_WaveHeight,nuv/64+float4(speed*50,0,0)).r*_WaveScale*0.5;
-                height+= tex2Dlod(_WaveHeight,nuv/32+float4(speed*25,0,0)).r*_WaveScale*0.25;
-                height+= tex2Dlod(_WaveHeight,nuv/16+float4(speed*12.5,0,0)).r*_WaveScale*0.2;
-                height+= tex2Dlod(_WaveHeight,nuv*2+float4(speed/2,0,0)).r*_WaveScale*0.1;
-                height+= tex2Dlod(_WaveHeight,nuv*4+float4(speed/4,0,0)).r*_WaveScale*0.05;
-                height+= tex2Dlod(_WaveHeight,nuv*8+float4(speed/8,0,0)).r*_WaveScale*0.025;
-                height+= tex2Dlod(_WaveHeight,nuv*16+float4(speed/16,0,0)).r*_WaveScale*0.0125;
-                height+= tex2Dlod(_WaveHeight,nuv*32+float4(speed/32,0,0)).r*_WaveScale*0.0125;
-                height+= tex2Dlod(_WaveHeight,nuv*64+float4(speed/64,0,0)).r*_WaveScale*0.0125;
-                height+= tex2Dlod(_WaveHeight,nuv*128+float4(speed/128,0,0)).r*_WaveScale*0.0125;
-                height+= tex2Dlod(_WaveHeight,nuv*256+float4(speed/256,0,0)).r*_WaveScale*0.0125;
-                height+= tex2Dlod(_WaveHeight,nuv*512+float4(speed/512,0,0)).r*_WaveScale*0.0125;
-                //height+=tex2Dlod(_WaveHeight,nuv+float4(-speed,0,0)).r*_WaveScale;
-                //height+=tex2Dlod(_WaveHeight,nuv*2+float4(-speed,0,0)).r*_WaveScale/2;
-                //height+=tex2Dlod(_WaveHeight,nuv*2+float4(speed,0,0)).r*_WaveScale/2;
-                // height+=tex2Dlod(_WaveHeight,nuv*4+float4(speed,0,0)).r*_WaveScale;
-                // height+=tex2Dlod(_WaveHeight,nuv*4+float4(-speed,0,0)).r*_WaveScale;
-                // height+=tex2Dlod(_WaveHeight,nuv*16+float4(speed,0,0)).r*_WaveScale;
-                // height+=tex2Dlod(_WaveHeight,nuv*16+float4(-speed,0,0)).r*_WaveScale;
-                // height+=tex2Dlod(_WaveHeight,nuv*8+float4(-speed,0,0)).r*_WaveScale;
-                // height+=tex2Dlod(_WaveHeight,nuv*8+float4(speed,0,0)).r*_WaveScale;
-                // height+=tex2Dlod(_WaveHeight,nuv*32+float4(speed,0,0)).r*_WaveScale;
-                // height+=tex2Dlod(_WaveHeight,nuv*32+float4(-speed,0,0)).r*_WaveScale;
-                return height;
-            }
+            // inline float getHeight(float4 nuv,float2 speed)
+            // {
+            //     float height= tex2Dlod(_WaveHeight,nuv/128+float4(speed*100,0,0)).r*_WaveScale*1;
+            //     height+= tex2Dlod(_WaveHeight,nuv/64+float4(speed*50,0,0)).r*_WaveScale*0.5;
+            //     height+= tex2Dlod(_WaveHeight,nuv/32+float4(speed*25,0,0)).r*_WaveScale*0.25;
+            //     height+= tex2Dlod(_WaveHeight,nuv/16+float4(speed*12.5,0,0)).r*_WaveScale*0.2;
+            //     height+= tex2Dlod(_WaveHeight,nuv*2+float4(speed/2,0,0)).r*_WaveScale*0.1;
+            //     height+= tex2Dlod(_WaveHeight,nuv*4+float4(speed/4,0,0)).r*_WaveScale*0.05;
+            //     height+= tex2Dlod(_WaveHeight,nuv*8+float4(speed/8,0,0)).r*_WaveScale*0.025;
+            //     height+= tex2Dlod(_WaveHeight,nuv*16+float4(speed/16,0,0)).r*_WaveScale*0.0125;
+            //     height+= tex2Dlod(_WaveHeight,nuv*32+float4(speed/32,0,0)).r*_WaveScale*0.0125;
+            //     height+= tex2Dlod(_WaveHeight,nuv*64+float4(speed/64,0,0)).r*_WaveScale*0.0125;
+            //     height+= tex2Dlod(_WaveHeight,nuv*128+float4(speed/128,0,0)).r*_WaveScale*0.0125;
+            //     height+= tex2Dlod(_WaveHeight,nuv*256+float4(speed/256,0,0)).r*_WaveScale*0.0125;
+            //     height+= tex2Dlod(_WaveHeight,nuv*512+float4(speed/512,0,0)).r*_WaveScale*0.0125;
+            //     //height+=tex2Dlod(_WaveHeight,nuv+float4(-speed,0,0)).r*_WaveScale;
+            //     //height+=tex2Dlod(_WaveHeight,nuv*2+float4(-speed,0,0)).r*_WaveScale/2;
+            //     //height+=tex2Dlod(_WaveHeight,nuv*2+float4(speed,0,0)).r*_WaveScale/2;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*4+float4(speed,0,0)).r*_WaveScale;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*4+float4(-speed,0,0)).r*_WaveScale;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*16+float4(speed,0,0)).r*_WaveScale;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*16+float4(-speed,0,0)).r*_WaveScale;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*8+float4(-speed,0,0)).r*_WaveScale;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*8+float4(speed,0,0)).r*_WaveScale;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*32+float4(speed,0,0)).r*_WaveScale;
+            //     // height+=tex2Dlod(_WaveHeight,nuv*32+float4(-speed,0,0)).r*_WaveScale;
+            //     return height;
+            // }
             inline float3 MovePos(float4 nuv)
             {
                 return tex2Dlod(_DispCS,nuv).xyz*_Choppiness;
             }
-            inline float3 getBump(float4 buv,float2 speed)
-            {
-                buv.xy+=speed;
-                float3 b= UnpackNormal(tex2D(_WaveMap,buv.xy)).rgb;
-                return b;
-            }
+            // inline float3 getBump(float4 buv,float2 speed)
+            // {
+            //     buv.xy+=speed;
+            //     float3 b= UnpackNormal(tex2D(_WaveMap,buv.xy)).rgb;
+            //     return b;
+            // }
             inline float4 HeightPoint(float4 uv,float4 oPos)
             {
                 float4 wpos=mul(unity_ObjectToWorld,oPos);   
@@ -169,13 +170,13 @@ Shader "Lyf/Environment/SimpleWater"
                 fixed3 viewDir=normalize(_WorldSpaceCameraPos-wpos);
                 float2 speed=_Time.y*_WaveSpeed.zw;
                 //float3 bump=normalize(i.tangentToWorld[2].xyz);
-                float3 bump=(tex2Dlod(_NormCS,float4(i.uv.zw,0,0) )).xyz;
+                float3 bump=(tex2D(_NormCS,i.uv.zw )).xyz;
                 //return fixed4(bump,1);
                 float3 biT=normalize(i.tangentToWorld[1].xyz);
                 //float3 bump=getBump(float4(i.uv.zw,0,0),speed);
                 // float3 bump2=UnpackNormal(tex2D(_WaveMap,(i.uv.zw-speed))).rgb;
                 // float3 bump=normalize(bump1+bump2);
-                float2 ofs=(bump.xy);
+                float2 ofs=(bump.xy)*_WaveSpeed.x;
                 //return fixed4(bump,1);
                 float2 offset=ofs*_Distortion;
                 float2 refrOfs=ofs*_RefractionDistortion;
@@ -184,6 +185,7 @@ Shader "Lyf/Environment/SimpleWater"
                 float4 duv=originPos;
                 duv.xy+=refrOfs;
                 float depth=Linear01Depth(UNITY_SAMPLE_DEPTH(tex2Dproj(_CameraDepthTexture,UNITY_PROJ_COORD(duv))));
+                bump=lerp(bump,_AlignmentNormal,depth*_JitterDepthScale);
                 float planedepth=WorldPostionToLinearDepth(wpos);
                 float rd=Linear01Depth(UNITY_SAMPLE_DEPTH(tex2Dproj(_CameraDepthTexture, UNITY_PROJ_COORD(originPos))));
                 float relDepth=(depth-planedepth);
@@ -229,8 +231,8 @@ Shader "Lyf/Environment/SimpleWater"
                 atten=lerp((1-_ShadowIntensity),1,atten);
                 half3 T=normalize(cross(i.tangentToWorld[1].xyz,bump));
                 //half nv=sqrt(1-dot(viewDir,T)*dot(viewDir,T));
-                //half3 l=_AlignmentLight.xyz;
-                half3 l=_WorldSpaceLightPos0.xyz;
+                half3 l=_AlignmentLight.xyz;
+                //half3 l=_WorldSpaceLightPos0.xyz;
                 half nv=saturate(dot(viewDir,_AlignmentNormal.xyz));
                 //half nl=sqrt(dot(l,T)*dot(l,T));
                 half nl=saturate(dot(l,bump));
@@ -247,7 +249,7 @@ Shader "Lyf/Environment/SimpleWater"
                 reflCol=lerp(reflCol,_ReflectColor,fresnel*_FresnelMax);
                 //reflCol=lerp(_ReflectColor,reflCol,fresnel);
                 #if defined (_RECSHADOW)
-                fixed3 finalColor=reflCol;
+                fixed3 finalColor=fresnel*reflCol+(1-fresnel)*refrCol;
                 #else
                 fixed3 finalColor=fresnel*reflCol+(1-fresnel)*refrCol;
                 #endif

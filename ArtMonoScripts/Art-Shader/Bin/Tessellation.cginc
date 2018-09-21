@@ -31,7 +31,8 @@ float TessellationEdgeFactor(TVD tv1,TVD tv2)
     float3 p1=UnityObjectToViewPos(tv2.vertex);
     float edgeLength=distance(p0,p1);
     float3 center=(p0+p1)*0.5;
-    float viewDistance=distance(center,_WorldSpaceCameraPos);
+    //float viewDistance=distance(center,_WorldSpaceCameraPos);
+    float viewDistance=length(center);
     return (_TessellationScale*1000000)/(viewDistance*viewDistance*viewDistance);
 }
 

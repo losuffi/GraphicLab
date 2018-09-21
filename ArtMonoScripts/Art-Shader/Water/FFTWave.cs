@@ -26,14 +26,16 @@ public class FFTWave : MonoBehaviour
     public float strength=200.0f;
     [SerializeField]
     public float chopponess=1.0f;
-    [SerializeField]
-    private Texture2D noise0;
-    [SerializeField]
-    private Texture2D noise1;
-    [SerializeField]
-    private Texture2D noise2;
-    [SerializeField]
-    private Texture2D noise3;
+    // [SerializeField]
+    // private MeshRenderer rend;
+    // [SerializeField]
+    // private Texture2D noise0;
+    // [SerializeField]
+    // private Texture2D noise1;
+    // [SerializeField]
+    // private Texture2D noise2;
+    // [SerializeField]
+    // private Texture2D noise3;
     private RenderTexture h0k;
     private RenderTexture temp;
     private RenderTexture fftInput_dY,fftInput_dX,fftInput_dZ;
@@ -44,6 +46,21 @@ public class FFTWave : MonoBehaviour
     private RenderTexture Debugfft_dy;
 
     private int size=0;
+    public void Refresh()
+    {
+        h0k.Release();
+        temp.Release();
+        fftInput_dX.Release();
+        fftInput_dY.Release();
+        fftInput_dZ.Release();
+        output_dX.Release();
+        output_dY.Release();
+        output_dZ.Release();
+        displacementMap.Release();
+        normalMap.Release();
+        Debugfft_dy.Release();
+        OnEnable();
+    }
     private void OnEnable() {
         switch(quality)
         {
@@ -110,10 +127,10 @@ public class FFTWave : MonoBehaviour
         csPhillipsSepectrum.SetFloat("_G",gConst);
         csPhillipsSepectrum.SetFloat("_A",spectrumA);
         csPhillipsSepectrum.SetTexture(CSKernel,"phillipsSpectrumResH0K",h0k);
-        csPhillipsSepectrum.SetTexture(CSKernel,"noise_R1",noise0);
-        csPhillipsSepectrum.SetTexture(CSKernel,"noise_I1",noise1);
-        csPhillipsSepectrum.SetTexture(CSKernel,"noise_R2",noise2);
-        csPhillipsSepectrum.SetTexture(CSKernel,"noise_I2",noise3);
+        // csPhillipsSepectrum.SetTexture(CSKernel,"noise_R1",noise0);
+        // csPhillipsSepectrum.SetTexture(CSKernel,"noise_I1",noise1);
+        // csPhillipsSepectrum.SetTexture(CSKernel,"noise_R2",noise2);
+        // csPhillipsSepectrum.SetTexture(CSKernel,"noise_I2",noise3);
         csPhillipsSepectrum.SetFloat("domainSize",strength);
         csPhillipsSepectrum.Dispatch(CSKernel,size/8,size/8,1);
     }
@@ -185,5 +202,6 @@ public class FFTWave : MonoBehaviour
         InverseFFT(fftInput_dZ,output_dZ);
         CombinedDisp();
         CombinedNorm();
+        //rend.sharedMaterial.SetTexture("_MainTex",output_dY);
     }
 }

@@ -7,7 +7,7 @@ public class FFTWaveEditor : Editor {
         base.OnInspectorGUI();
         if(GUILayout.Button("Refresh"))
         {
-            (target as FFTWave).InitPhillipsSpectrum();
+            (target as FFTWave).Refresh();
         }
     }
 }
