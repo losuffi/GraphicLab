@@ -236,7 +236,7 @@ Shader "Lyf/Environment/SimpleWater"
                 half nv=saturate(dot(viewDir,_AlignmentNormal.xyz));
                 //half nl=sqrt(dot(l,T)*dot(l,T));
                 half nl=saturate(dot(l,bump));
-                half df=saturate((nl))*atten;
+                half df=saturate(nl)*atten;
                 half3 h=normalize(viewDir+l);
                 //half TH=dot(T,h);
                 //half nH=sqrt(1-TH*TH)*atten;
@@ -257,7 +257,7 @@ Shader "Lyf/Environment/SimpleWater"
                 finalColor=lerp(finalColor, c,_ColorAlpha);   
                 finalColor+=pow(nH,_LightSepcularScale*_LightSepcularScale*_LightSepcularScale)*_SpecColor;
                 //finalColor=lerp(finalColor,_BoardColor,boardDepth);
-                return fixed4(finalColor,1);
+                return df;
             }
             ENDCG
         }
