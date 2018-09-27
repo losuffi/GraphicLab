@@ -21,10 +21,9 @@ Shader"Lyf/Environment/NormalWater"
         {
             Tags{"LightMode"="ForwardBase" "Queue"="Transparent" "RenderType"="Opaque"}
             Cull Off
-            ZWrite Off
             CGPROGRAM
             #pragma vertex vert
-            #pragma fragment frag
+            #pragma fragment frag  
             #pragma hull hs
             #pragma domain ds
             #include "../Bin/Tessellation.cginc"
@@ -44,11 +43,13 @@ Shader"Lyf/Environment/NormalWater"
                 float4 uv:TEXCOORD1;
                 float4 tangentToWorld[3]:TEXCOORD2;
                 float4 oriWPos:TEXCOORD5;
-                SHADOW_COORDS(6)
+                //SHADOW_COORDS(6)
             };
             inline float3 MovePos(float4 nuv)
             {
-                return tex2Dlod(_DispCS,nuv).xyz*_Choppiness;
+                float3 res=tex2Dlod(_DispCS,nuv).xyz;
+                res.y=max(res.y,0)+1;
+                return res*_Choppiness;
             }
             inline float4 HeightPoint(float4 uv,float4 oPos)
             {
@@ -56,16 +57,18 @@ Shader"Lyf/Environment/NormalWater"
                 wpos.xyz+=MovePos(uv);
                 return mul(unity_WorldToObject,wpos);
             }
+
             v2f TessellationVertex(TVD v)
             {
                 v2f o;
-                o.uv.xy=v.texcoord*_Tex_ST.xy;
-                o.uv.zw=v.texcoord*_Tex_ST.zw;
+                o.pos=UnityObjectToClipPos(v.vertex);
+                o.uv.xy=v.uv1*_Tex_ST.xy;
+                o.uv.zw=v.uv1*_Tex_ST.zw;
                 float3 wn=UnityObjectToWorldNormal(v.normal);
                 float4 huv=float4(o.uv.xy,0,0);
                 float3 tangent=v.tangent.xyz;
                 float4 opos=HeightPoint(huv,v.vertex);
-                o.pos=UnityObjectToClipPos(opos);
+                o.pos=UnityObjectToClipPos(v.vertex);
                 o.screenPos=ComputeScreenPos(o.pos);
                 float4 tangentworld=float4(UnityObjectToWorldDir(tangent),v.tangent.w);
                 float3x3 tTw=CreateTangentToWorldPerVertex(wn,tangentworld.xyz,-tangentworld.w);
@@ -77,7 +80,7 @@ Shader"Lyf/Environment/NormalWater"
                 o.tangentToWorld[0].w=wpos.x;
                 o.tangentToWorld[1].w=wpos.y;
                 o.tangentToWorld[2].w=wpos.z;
-                TRANSFER_SHADOW(o);
+                //TRANSFER_SHADOW(o);
                 return o;
             }
             [UNITY_domain("tri")]
@@ -86,10 +89,13 @@ Shader"Lyf/Environment/NormalWater"
                     float3 barycentricCoordinates:SV_DomainLocation)
             {
                 TVD data;
-                DS_PROGRAM_INTERPOLATE(vertex);
-                DS_PROGRAM_INTERPOLATE(tangent);
-                DS_PROGRAM_INTERPOLATE(texcoord);
-                DS_PROGRAM_INTERPOLATE(normal);
+                //data.vertex=patch[1].vertex; //* barycentricCoordinates.x +patch[1].vertex * barycentricCoordinates.y +patch[2].vertex* barycentricCoordinates.z;
+                DS_PROGRAM_INTERPOLATE(vertex)
+                DS_PROGRAM_INTERPOLATE(normal)
+                DS_PROGRAM_INTERPOLATE(tangent)
+                DS_PROGRAM_INTERPOLATE(uv)
+                DS_PROGRAM_INTERPOLATE(uv1)
+                DS_PROGRAM_INTERPOLATE(uv2)
                 return TessellationVertex(data);
             }
             fixed4 frag(v2f i):SV_Target
@@ -103,12 +109,12 @@ Shader"Lyf/Environment/NormalWater"
                 i.screenPos.xy+=ofs;
                 fixed3 reflCol=tex2Dproj(_MainTex,UNITY_PROJ_COORD(i.screenPos)).rgb;
                 bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
-                #if defined(SHADOWS_SCREEN) && defined(_RECSHADOW)
-                UNITY_LIGHT_ATTENUATION(atten,i,wpos);
-                #else
+                // #if defined(SHADOWS_SCREEN) && defined(_RECSHADOW)
+                // UNITY_LIGHT_ATTENUATION(atten,i,wpos);
+                // #else
+                // float atten=1;
+                // #endif
                 float atten=1;
-                #endif
-                
                 fixed3 seaColor=SeaColor((wpos-i.oriWPos),bump,normalize(_LightDir),viewDir,dist,reflCol,atten);
                 fixed3 skyColor=SkyColor(-viewDir,atten,reflCol);
                 fixed3 color=lerp(skyColor,seaColor,pow(smoothstep(0.0,-0.05,-viewDir.y),0.3));

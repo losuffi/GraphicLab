@@ -36,7 +36,6 @@ Shader "Lyf/Environment/SimpleWater"
         Pass
         {
             Cull Off
-            ZWrite Off
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -117,8 +116,8 @@ Shader "Lyf/Environment/SimpleWater"
             v2f TessellationVertex(TVD v)
             {
                 v2f o;
-                o.uv.xy=TRANSFORM_TEX(v.texcoord,_WaveHeight);
-                o.uv.zw=TRANSFORM_TEX(v.texcoord,_WaveMap);
+                o.uv.xy=TRANSFORM_TEX(v.uv1,_WaveHeight);
+                o.uv.zw=TRANSFORM_TEX(v.uv1,_WaveMap);
                 float3 wn=UnityObjectToWorldNormal(v.normal);
                 float4 huv=float4(o.uv.xy,0,0);
                 float3 tangent=v.tangent.xyz;
@@ -143,10 +142,12 @@ Shader "Lyf/Environment/SimpleWater"
                     float3 barycentricCoordinates:SV_DomainLocation)
             {
                 TVD data;
-                DS_PROGRAM_INTERPOLATE(vertex);
-                DS_PROGRAM_INTERPOLATE(tangent);
-                DS_PROGRAM_INTERPOLATE(texcoord);
-                DS_PROGRAM_INTERPOLATE(normal);
+                DS_PROGRAM_INTERPOLATE(vertex)
+                DS_PROGRAM_INTERPOLATE(normal)
+                DS_PROGRAM_INTERPOLATE(tangent)
+                DS_PROGRAM_INTERPOLATE(uv)
+                DS_PROGRAM_INTERPOLATE(uv1)
+                DS_PROGRAM_INTERPOLATE(uv2)
                 return TessellationVertex(data);
             }
             
