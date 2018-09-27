@@ -1,5 +1,4 @@
 #include "UnityCG.cginc"
-// Upgrade NOTE: excluded shader from DX11; has structs without semantics (struct appdata_tess members normal,tangent,uv,uv1,uv2)
 #pragma exclude_renderers d3d11
 float _TessellationScale;
 #define DS_PROGRAM_INTERPOLATE(fieldName) data.fieldName=\

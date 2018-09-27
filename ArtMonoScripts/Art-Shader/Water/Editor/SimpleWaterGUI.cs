@@ -12,6 +12,7 @@ public class SimpleWaterGUI:ShaderGUI
             m.SetOverrideTag("RenderType", "Transparent");
             m.SetInt("_ZWrite", 0);
             m.DisableKeyword("_RECSHADOW");
+            m.EnableKeyword("_REFRACTION");
             m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
         if(GUILayout.Button("几何状态转换"))
@@ -19,6 +20,7 @@ public class SimpleWaterGUI:ShaderGUI
             m.SetOverrideTag("RenderType", "");
             m.SetInt("_ZWrite", 0);
             m.renderQueue = -1;
+            m.DisableKeyword("_REFRACTION");
             m.EnableKeyword("_RECSHADOW");
         }
     }
