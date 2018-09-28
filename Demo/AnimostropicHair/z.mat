@@ -8,18 +8,18 @@ Material:
   m_PrefabInternal: {fileID: 0}
   m_Name: z
   m_Shader: {fileID: 4800000, guid: 73b6564d7956b3840953dacd543924d9, type: 3}
-  m_ShaderKeywords: SHADOWS_SCREEN USE_PHONG
+  m_ShaderKeywords: SHADOWS_SCREEN USE_PHONG _NORMALMAP
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 2000
   stringTagMap: {}
   disabledShaderPasses: []
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
     - _BumpMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 0955df25c00f6f442bd150b90d2800f3, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FlowMap:
@@ -27,29 +27,37 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _JitterMap:
-        m_Texture: {fileID: 2800000, guid: 3e26e9e072952d743b8167979e0f92be, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Texture: {fileID: 2800000, guid: 2a2ffcba696e40a4e898b3035b20ee1e, type: 3}
+        m_Scale: {x: 10, y: 10}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
-        m_Scale: {x: 5, y: 5}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - _BumpScale: 0.26
-    - _Cull: 0
+    - _BumpScale: 1
+    - _Cull: 2
     - _Cutoff: 1
-    - _DstFactor: 10
+    - _Diffstrength: 0.126
+    - _DstFactor: 0
     - _GlossMapScale: 1
     - _GlossyReflections: 1
+    - _ShiftScale: -0.43
+    - _Specstrength: 0.368
     - _SpecularHighlights: 1
-    - _SrcFactor: 5
+    - _SrcFactor: 1
+    - _Stanstrength: 0.203
     - _TessellationScale: 8
+    - _WireExp: 10
     - _ZWrite: 1
-    - _exp: 200
-    - _strength: 279.35
+    - _exp: 138
+    - _strength: 100
     m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _AnisotropicDiffColor: {r: 1, g: 1, b: 1, a: 1}
+    - _AnisotropicSpecularColor: {r: 1, g: 0.9908281, b: 0.7877358, a: 1}
+    - _Color: {r: 0.4056604, g: 0.4056604, b: 0.4056604, a: 1}
+    - _specColor: {r: 1, g: 1, b: 1, a: 1}

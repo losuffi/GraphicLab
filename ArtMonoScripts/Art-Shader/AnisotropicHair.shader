@@ -3,6 +3,8 @@ Shader "Lyf/Man/Hair"
     Properties
     {
         _Color("Color", Color) = (1,1,1,1)
+        _AnisotropicSpecularColor("Specular Color",Color)=(1,1,1,1)
+        _AnisotropicDiffColor("Hair Wire Color",Color)=(1,1,1,1)
         _MainTex("Albedo", 2D) = "white" {}
         _Cutoff("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
         _GlossMapScale("Smoothness Scale", Range(0.0, 1.0)) = 1.0
@@ -11,13 +13,16 @@ Shader "Lyf/Man/Hair"
 
         [ToggleOff] _SpecularHighlights("Specular Highlights", Float) = 1.0
         [ToggleOff] _GlossyReflections("Glossy Reflections", Float) = 1.0
-
+        _ShiftScale("Shift Scale", Float) = 1.0
         _BumpScale("Scale", Float) = 1.0
         _BumpMap("Normal Map", 2D) = "bump" {}
         _JitterMap("Jitter Map",2D) ="black" {}
         _FlowMap("Flow Map",2D)="black"{}
         _exp("Exponet",Range(10,200))=90
-        _strength("Strength",Float)=0.5
+        _WireExp("Wire Exponet",Range(1,10))=5
+        _Specstrength("Spec Strength",Range(0,1))=0.5
+        _Diffstrength("Wire Strength",Range(0,1))=0.5
+        _Stanstrength("Standard Strength",Range(0,1))=0.5
         [Enum(UnityEngine.Rendering.CullMode)] _Cull("Cull Mode", Float) = 0 
 		[Enum(UnityEngine.Rendering.BlendMode)] _SrcFactor("_SrcFactor",Float)=5
 		[Enum(UnityEngine.Rendering.BlendMode)] _DstFactor("_DstFactor",Float)=10
@@ -82,7 +87,7 @@ Shader "Lyf/Man/Hair"
                 o.tangentToWorld[1].xyz=tangentToWorld[1];
                 o.tangentToWorld[2].xyz=tangentToWorld[2];
                 TRANSFER_SHADOW(o);
-                o.uv=float4(TRANSFORM_TEX(v.texcoord,_MainTex),0,0);
+                o.uv=v.texcoord;
                 return o;
             }
             fixed4 frag(Input i):SV_Target
@@ -91,14 +96,15 @@ Shader "Lyf/Man/Hair"
                 float3 worldNormal=PerPixelWN(i.uv,i.tangentToWorld);
                 //return fixed4(i.tangentToWorld[2].xyz,1);
                 half dir=i.tangentToWorld[0].w;
-                float3 T=normalize(i.tangentToWorld[0].xyz)*dir;
-                float3 Y=normalize(i.tangentToWorld[1].xyz);
-                //T= FlowMapModifyDir(T,Y,i.uv.xy);
-                #if defined(SHADOWS_SCREEN)
+                //float3 T=normalize(i.tangentToWorld[0].xyz)*dir;
+                float3 T=normalize(cross(i.tangentToWorld[1].xyz,worldNormal))*dir;
+                // float3 Y=normalize(i.tangentToWorld[1].xyz);
+                // T= FlowMapModifyDir(T,Y,i.uv.xy);
+                // #if defined(SHADOWS_SCREEN)
                 UNITY_LIGHT_ATTENUATION(atten,i,i.worldPos);
-                #else
-                float atten=1;
-                #endif
+                // #else
+                // float atten=1;
+                // #endif
                 //return fixed4(T,1);
                 return AnisotropicMetallicPBRRender(i.uv,worldNormal,T,i.worldPos,i.eyeVec,atten);
             }
