@@ -31,6 +31,7 @@ public class ShadowCollector : MonoBehaviour {
         cb.Clear();
         cb.SetShadowSamplingMode(BuiltinRenderTextureType.CurrentActive,ShadowSamplingMode.RawDepth);
         cb.Blit(BuiltinRenderTextureType.CurrentActive,shadowmap);
-
+        var s=Shader.PropertyToID("_CshadowMap");
+        Shader.SetGlobalTexture(s,shadowmap);
     }
 }

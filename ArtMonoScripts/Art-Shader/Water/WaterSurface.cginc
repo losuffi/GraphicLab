@@ -23,24 +23,63 @@ float specular(float3 n,float3 l,float3 e,float s)
     float nrm=(s+8.0)/(PI*8.0);
     return pow(max(dot(reflect(e,n),l),0.0),s)*nrm;
 }
-fixed3 SkyColor(float3 e,float a,fixed3 reflC)
+fixed3 SkyColor(float3 e,fixed3 reflC)
 {
     e.y=saturate(e.y);
-    return (reflC+ a*float3(clamp(pow(1.0-e.y,2),0,0.9),clamp(1.0-e.y,0,0.9),0.7+(1.0-e.y)*0.4))/2;
+    return (reflC+float3(clamp(pow(1.0-e.y,2),0,0.9),clamp(1.0-e.y,0,0.9),0.7+(1.0-e.y)*0.4))/2;
 }
-
-fixed3 SeaColor(float3 p,float3 n,float3 l,float3 eye,float3 ofs,fixed3 reflC,fixed3 refrC,float relDepth,float a)
+fixed3 SkyColorNoReflC(float3 e)
+{
+    e.y=saturate(e.y);
+    return float3(clamp(pow(1.0-e.y,2),0,0.9),clamp(1.0-e.y,0,0.9),0.7+(1.0-e.y)*0.4);
+}
+fixed3 SeaColorNoRef(float3 p,float3 n,float3 l,float3 eye,float3 ofs,float a)
 {
     float fresnel = clamp(1.0 - dot(n,eye), 0.0, 1.0);
     fresnel = pow(fresnel,3.0) * 0.65;
-    fixed3 reflected=SkyColor(reflect(-eye,n),a,reflC);
-    fixed3 refract=_SeaBase+diffuse(n,l,_DiffPow)*_SeaWaterColor*0.15*a;
+    fixed3 reflected=SkyColorNoReflC(reflect(-eye,n));
+    fixed3 refract=_SeaBase+diffuse(n,l,_DiffPow)*_SeaWaterColor*0.15;
+    fixed3 color=lerp(refract,reflected,fresnel);
+    float lumiance=Luminance(color);
+    lumiance=smoothstep(0,0.3,lumiance);
+    //a=lerp(a,1,lumiance);
+    float atten=max(1.0-dot(ofs,ofs)*_DistFactor,0);
+    color+=_SeaWaterColor*(p.y-_RelativeHeightMin)*0.18*atten;
+    color+=specular(n,l,-eye,_SpecPow);
+    return color*a;
+}
+fixed3 SeaColorNoSpec(float3 p,float3 n,float3 l,float3 eye,float3 ofs,fixed3 reflC,fixed3 refrC,float relDepth,float a)
+{
+    float fresnel = clamp(1.0 - dot(n,eye), 0.0, 1.0);
+    fresnel = pow(fresnel,3.0) * 0.65;
+    fixed3 reflected=SkyColor(reflect(-eye,n),reflC);
+    fixed3 refract=_SeaBase+diffuse(n,l,_DiffPow)*_SeaWaterColor*0.15;
     #if defined(_REFRACTION)
     refract=lerp(refrC,refract,saturate(relDepth*_WaterAlpha));
     #endif
     fixed3 color=lerp(refract,reflected,fresnel);
+    float lumiance=Luminance(color);
+    lumiance=smoothstep(0,0.5,lumiance);
+    a=lerp(a,1,lumiance);
     float atten=max(1.0-dot(ofs,ofs)*_DistFactor,0);
     color+=_SeaWaterColor*(p.y-_RelativeHeightMin)*0.18*atten;
-    color+=specular(n,l,-eye,_SpecPow)*a;
-    return color;
+    return color*a;
+}
+fixed3 SeaColor(float3 p,float3 n,float3 l,float3 eye,float3 ofs,fixed3 reflC,fixed3 refrC,float relDepth,float a)
+{
+    float fresnel = clamp(1.0 - dot(n,eye), 0.0, 1.0);
+    fresnel = pow(fresnel,3.0) * 0.65;
+    fixed3 reflected=SkyColor(reflect(-eye,n),reflC);
+    fixed3 refract=_SeaBase+diffuse(n,l,_DiffPow)*_SeaWaterColor*0.15;
+    #if defined(_REFRACTION)
+    refract=lerp(refrC,refract,saturate(relDepth*_WaterAlpha));
+    #endif
+    fixed3 color=lerp(refract,reflected,fresnel);
+    float lumiance=Luminance(color);
+    lumiance=smoothstep(0,0.5,lumiance);
+    a=lerp(a,1,lumiance);
+    float atten=max(1.0-dot(ofs,ofs)*_DistFactor,0);
+    color+=_SeaWaterColor*(p.y-_RelativeHeightMin)*0.18*atten;
+    color+=specular(n,l,-eye,_SpecPow);
+    return color*a;
 }
