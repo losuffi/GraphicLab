@@ -6,9 +6,9 @@ Material:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
-  m_Name: water
+  m_Name: sWater
   m_Shader: {fileID: 4800000, guid: f06676cb569b3f944a4a3b3e7269f81b, type: 3}
-  m_ShaderKeywords: SHADOWS_SCREEN _REFRACTION
+  m_ShaderKeywords: SHADOWS_SCREEN _REFRACITON _REFRACTION
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -20,11 +20,15 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BoardTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: ef0481aab1f9bc846b38cffd6aa1ff3e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _CubeMap:
+        m_Texture: {fileID: 8900000, guid: 7537f5476b89d344c8e4ce35ec7d637c, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
@@ -59,62 +63,80 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _SpecGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _WaveHeight:
-        m_Texture: {fileID: 2800000, guid: 48dc6b8a072300748a25f9eee0de4433, type: 3}
-        m_Scale: {x: 5, y: 5}
+        m_Texture: {fileID: 2800000, guid: 2c78f22a98b0d2e41a9febff0834a439, type: 3}
+        m_Scale: {x: 10, y: 10}
         m_Offset: {x: 0, y: 0}
     - _WaveMap:
-        m_Texture: {fileID: 2800000, guid: a59fbb4803458b04f93b810b71f0344e, type: 3}
+        m_Texture: {fileID: 2800000, guid: 9ce9a28c39e75bb4da0063e0586a6e54, type: 3}
         m_Scale: {x: 5, y: 5}
         m_Offset: {x: 0, y: 0}
     m_Floats:
+    - _AlphaMultiplier: 1
     - _BumpScale: 1
-    - _ColorAlpha: 0.395
+    - _ColorAlpha: 0
+    - _Cull: 0
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
-    - _DiffPow: 50
-    - _DistFactor: 0.00001
-    - _Distortion: 0.1
+    - _DiffPow: 30
+    - _DistFactor: 0.0001774
+    - _Distortion: 5.37
     - _DstBlend: 0
-    - _FresnelMax: 0.65
+    - _DstFactor: 10
+    - _FresnelMax: 0.786
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _JitterDepthScale: 0.5
-    - _LightReflectionScale: 4.1
-    - _LightSepcularScale: 7.4
-    - _LumiancePow: 1
+    - _InvFade: 1
+    - _JitterDepthScale: 0.88
+    - _LightReflectionScale: 2
+    - _LightSepcularScale: 38.3
+    - _LumiancePow: 2.07
     - _Metallic: 0
     - _Mode: 0
+    - _Multiplier: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _RefractDistortion: 2
-    - _RefractionAlpha: 0.384
-    - _RefractionDistortion: 5.2
-    - _RelativeHeightMin: 0.64
-    - _ShadowIntensity: 0.364
+    - _RefractDistortion: 0.01
+    - _RefractionAlpha: 0.994
+    - _RefractionDistortion: 0.6
+    - _RelativeHeightMin: 0.258
+    - _ShadowDistance: 10
+    - _ShadowIntensity: 0.59
     - _SmoothnessTextureChannel: 0
-    - _SpecPow: 15.3
+    - _SpecPow: 52.3
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _TessellationScale: 1000
+    - _SrcFactor: 5
+    - _TessellationScale: 100
     - _UVSec: 0
-    - _WaterAlpha: 1
-    - _WaveScale: 0.1
+    - _WaterAlpha: 0.097
+    - _WaveScale: 4.2
+    - _WaveXSpeed: 0.03
+    - _WaveYSpeed: 0.03
+    - _ZOfs: 0
     - _ZWrite: 0
     m_Colors:
-    - _AlignmentLight: {r: -0.25, g: 1, b: 0.29, a: 0}
+    - _AlignmentLight: {r: -1, g: 1, b: 1, a: 0}
     - _AlignmentNormal: {r: 0, g: 1, b: 0, a: 0}
-    - _BiTangent: {r: 0.71, g: 1, b: 0.1, a: 0}
-    - _BoardColor: {r: 0, g: 0.14, b: 0.224, a: 1}
-    - _Color: {r: 0.41651833, g: 0.7441322, b: 0.754717, a: 1}
+    - _BiTangent: {r: 0.57, g: 0.08, b: 0.53, a: 0}
+    - _BoardColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.40899786, g: 0.4757283, b: 0.9528302, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _LightDir: {r: 0.18, g: 1, b: 1, a: 0}
-    - _LightReflectionBackColor: {r: 0.1509879, g: 0.1745126, b: 0.2735849, a: 1}
-    - _LightReflectionColor: {r: 0.4707191, g: 0.7735849, b: 0.7589164, a: 1}
-    - _ReflectColor: {r: 0.25516194, g: 0.8867924, b: 0.732362, a: 1}
-    - _SeaBase: {r: 0.09812211, g: 0.25283325, b: 0.3301887, a: 1}
-    - _SeaWaterColor: {r: 0.09198113, g: 0.122641504, b: 0.10664478, a: 1}
+    - _FresnelColor: {r: 1, g: 1, b: 1, a: 1}
+    - _LightDir: {r: -1, g: 1, b: 1, a: 0}
+    - _LightReflectionBackColor: {r: 0, g: 0.08667151, b: 0.3018868, a: 1}
+    - _LightReflectionColor: {r: 0.41460484, g: 0.557779, b: 0.7264151, a: 1}
+    - _ReflectColor: {r: 0.2028302, g: 0.94123644, b: 1, a: 1}
+    - _SeaBase: {r: 0.1, g: 0.19, b: 0.22, a: 1}
+    - _SeaWaterColor: {r: 0.42352948, g: 0.9254902, b: 0.4515677, a: 1}
+    - _ShadowColor: {r: 0.35, g: 0.2, b: 0.16, a: 1}
     - _SpecColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Tex_ST: {r: 1, g: 1, b: 1, a: 1}
-    - _WaveSpeed: {r: 0.0001, g: 0.0001, b: 0.5, a: 0.5}
+    - _SpeedUV: {r: 0, g: 0, b: 0, a: 0}
+    - _Tex_ST: {r: 5, g: 5, b: 5, a: 5}
+    - _TintColor: {r: 1, g: 1, b: 1, a: 1}
+    - _WaveSpeed: {r: 0.1, g: 0.001, b: 0, a: 0.26}
