@@ -4,6 +4,6 @@
 
 ## 1.FFT OCEAN
 
-![cc](http://i.imgur.com/msmMzbM.gif)
+![cc](READMEPIC\A7.gif)
 
  Path:Assets/Demo/Water/WaterDemo.unity
