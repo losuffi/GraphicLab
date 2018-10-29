@@ -1,8 +1,10 @@
 #pragma kernel phillipsSpectrum
+#pragma kernel LyfSpectrum
 #define PI		3.14159265358f
 #define PI2		6.28318530717f
 #define HPI		1.57079632679f
 #define INVPI2	0.63661977236f
+#define FAC     0.70710678118f
 uint _Size;
 float domainSize;
 float4 _Wind;
@@ -10,7 +12,7 @@ float _G;
 float _Length;
 float _A;
 RWTexture2D<float4> phillipsSpectrumResH0K;
-
+RWTexture2D<float2> IscopeH0K;
 Texture2D<float> noise_R1;
 Texture2D<float> noise_I1;
 Texture2D<float> noise_R2;
@@ -70,7 +72,11 @@ float PosCosSquaredDirectionalSpreading(float w, float theta, float kMag, float 
 		return 0.0f;
 	}
 }
-[numthreads(8,8,1)]
+inline float activation(float input)
+{
+    return 1/(1+exp(-input));
+}
+[numthreads(32,32,1)]
 void phillipsSpectrum(uint2 id:SV_DispatchThreadID)
 {
     int2 center=_Size.xx/2;
@@ -104,4 +110,43 @@ void phillipsSpectrum(uint2 id:SV_DispatchThreadID)
     float2 randB=float2(cos(rb),-sin(rb));
 
     phillipsSpectrumResH0K[id]=float4(ap*randA,an*randB);
+}
+float2 Spectrum(int2 id)
+{
+    int2 coord=id-_Size.xx/2;
+    float2 k=coord*PI2/domainSize;
+    float klength=length(k);
+    if(klength<0.000001) klength=0.000001; 
+    float klength2=klength*klength;
+    float klength4=klength2*klength2;
+    float kdotw= dot(normalize(k+0.001*_Wind.xy),normalize(_Wind.xy));
+    float kdotw2=kdotw*kdotw;
+    float wlength=length(_Wind.xy);
+    float L=wlength*wlength/_G;
+    float L2=L*L;
+    float damping=0.001;
+    float l2=L2*damping*damping;
+    float pk= _A*exp(-1.0f/(klength2*L2))/klength4*kdotw2*exp(-klength2*l2);
+    pk=sqrt(pk)*FAC;
+    return float2(pk*RandGauss(),pk*RandGauss());
+    // float _exp=exp(-1/(klength2*L*L));
+    // float kw=dot(normalize(k+0.01*_Wind.xy),normalize(_Wind.xy));
+    // float nkw=dot(normalize(-k+0.01*_Wind.xy),normalize(_Wind.xy));
+    // float pk=(_A*_exp*kw*kw)/(klength2*klength2);
+    // float npk=(_A*_exp*nkw*nkw)/(klength2*klength2);
+    // pk=abs(sqrt(pk)*FAC);
+    // npk=abs(sqrt(npk)*FAC);
+    // return float4(pk*RandGauss(),pk*RandGauss(),npk*RandGauss(),-npk*RandGauss());
+}
+[numthreads(32,32,1)]
+void LyfSpectrum(int2 id:SV_DispatchThreadID)
+{
+    _rngState=HASH(id.y*_Size+id.x);
+    float2 h0k=Spectrum(id);
+    float2 temp=Spectrum(-id);
+    float2 h0k_conj=float2(temp.x,-temp.y);
+    //float2 fem=normalize(k+0.01*_Wind.xy);
+    // res.xy= float2(res.y*(fem.x+fem.y),res.x*(fem.x+fem.y));
+    // res.zw= float2(res.w*(fem.x+fem.y),res.z*(fem.x+fem.y));
+    phillipsSpectrumResH0K[id]=float4(h0k,h0k_conj);
 }

@@ -1,5 +1,5 @@
 
-Shader "Lyf/Environment/SimpleWater"
+Shader "Lyf/Environment/Water/Simple"
 {
     Properties
     {

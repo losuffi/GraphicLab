@@ -1,5 +1,5 @@
 
-Shader"Lyf/Environment/NormalWater"
+Shader"Lyf/Environment/Water/FFT"
 {
     Properties
     {
@@ -7,14 +7,18 @@ Shader"Lyf/Environment/NormalWater"
         _LightDir("Light Direction",Vector)=(-1,1,1,0)
         _TessellationScale("Tessellation Scale",Range(0,1000))=8
         _SpecPow("Specular Pow",Range(0.1,100))=60
-        _DiffPow("Diffuse Pow",Range(0.1,50))=30
-        _RelativeHeightMin("Height Min",Range(0,1))=0.3
+        _SpecAtten("Specular Atten",Float)=8.0
+        _SpecFact("Specular Factor",Float)=8.0
+        _DiffPow("Diffuse Pow",Range(0.1,100))=80
+        _RelativeHeightMin("Height Min",Range(-5,5))=0.3
+        SEA_LIGHT_ATTEN("Sea Light Atten",Range(0,0.2))=0.02
         _DistFactor("Distance Factor",Range(0.0002,0.00001))=0.0002
         _SeaBase("Sea Base Color",Color)=(0.1,0.19,0.22,1)
         _SeaWaterColor("Sea Water Color",Color)=(0.8,0.9,0.6,1)
         _Distortion("Distortion",Range(0.1,20))=0.5
         _RefractDistortion("Refraction Distortion",Range(0,2))=0.01
         _WaterAlpha("Alpha",Range(0.001,1))=0.001
+        _ViewDirAdjust("View Dir Adjust",Range(0,1))=0.15
         _LumiancePow("Lumiance pow",Range(1,10))=1
     }
     SubShader
@@ -39,7 +43,8 @@ Shader"Lyf/Environment/NormalWater"
             float4 _Tex_ST,_LightDir;
             //From Cs
             sampler2D _DispCS,_NormCS;
-            float _Choppiness,_Distortion,_RefractDistortion;
+            float4 _DispCS_TexelSize;
+            float _Choppiness,_Distortion,_RefractDistortion,_ViewDirAdjust;
             struct v2f
             {
                 float4 pos:SV_POSITION;
@@ -52,8 +57,8 @@ Shader"Lyf/Environment/NormalWater"
             inline float3 MovePos(float4 nuv)
             {
                 float3 res=tex2Dlod(_DispCS,nuv).xyz;
-                res.y=max(res.y,0)+1;
-                return res*_Choppiness;
+                //res.y=max(res.y,0)+1;
+                return res;
             }
             inline float4 HeightPoint(float4 uv,float4 oPos)
             {
@@ -119,8 +124,9 @@ Shader"Lyf/Environment/NormalWater"
             {
                 float3 wpos=float3(i.tangentToWorld[0].w,i.tangentToWorld[1].w,i.tangentToWorld[2].w);
                 float3 dist=_WorldSpaceCameraPos.xyz-wpos;
-                
+                float d=sqrt(dot(dist,dist));
                 float3 viewDir=normalize(dist);
+                //float2 bumplodUv=(i.uv.zw*(100/clamp(d,140,380)));
                 float3 bump=(tex2D(_NormCS,i.uv.zw)).xyz;
                 float2 ofs=(bump.xy)*_Distortion;
                 float2 refraofs=_RefractDistortion*bump.xy;
@@ -140,6 +146,7 @@ Shader"Lyf/Environment/NormalWater"
                 refrCol=tex2Dproj(_RefractionTex,guv).rgb;
                 #endif
                 bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
+                //bump=lerp(bump,i.tangentToWorld[2].xyz,smoothstep(0,280,d));
                 #if defined(SHADOWS_SCREEN) && defined(_RECSHADOW)
                 UNITY_LIGHT_ATTENUATION(atten,i,wpos);
                 half bakedAtten = UnitySampleBakedOcclusion(0, wpos);
@@ -150,11 +157,10 @@ Shader"Lyf/Environment/NormalWater"
                 float atten=1;//tex2Dproj(_CshadowMap,UNITY_PROJ_COORD(originPos)).r;
                 #endif
                 //float atten=1;
-                fixed3 skyColor=SkyColor(-viewDir,reflCol);
-                
+                viewDir=normalize(viewDir+float3(0,1,0)*_ViewDirAdjust);
                 fixed3 seaColor=SeaColor((wpos-i.oriWPos),bump,normalize(_LightDir),viewDir,dist,reflCol,refrCol,rD,atten);
                 
-                fixed3 color=lerp(skyColor,seaColor,pow(smoothstep(0.0,-0.05,-viewDir.y),0.3));
+                fixed3 color=seaColor;;
                 return fixed4(color,1.0);
             }
             ENDCG
@@ -178,7 +184,7 @@ Shader"Lyf/Environment/NormalWater"
             float4 _Tex_ST,_LightDir;
             //From Cs
             sampler2D _DispCS,_NormCS;
-            float _Choppiness,_Distortion,_RefractDistortion,_LumiancePow;
+            float _Choppiness,_Distortion,_RefractDistortion,_LumiancePow,_ViewDirAdjust;
             struct v2f
             {
                 float4 pos:SV_POSITION;
@@ -284,9 +290,9 @@ Shader"Lyf/Environment/NormalWater"
                 refrCol=tex2Dproj(_RefractionTex,guv).rgb;
                 #endif
                 bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
-                fixed3 skyColor=SkyColor(-viewDir,reflCol);
+                viewDir=normalize(viewDir+float3(0,1,0)*_ViewDirAdjust);
                 fixed3 seaColor=SeaColorNoSpec((wpos-i.oriWPos),bump,normalize(_LightDir),viewDir,dist,reflCol,refrCol,rD,att);
-                fixed3 color=lerp(skyColor,seaColor,pow(smoothstep(0.0,-0.05,-viewDir.y),0.3));
+                fixed3 color=seaColor;
                 og0=half4(color,1);
                 og1=specular(bump,normalize(_LightDir),-viewDir,_SpecPow);
                 og2=half4(bump*0.5+0.5,1);

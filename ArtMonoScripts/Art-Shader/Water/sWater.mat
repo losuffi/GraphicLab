@@ -76,15 +76,16 @@ Material:
         m_Scale: {x: 5, y: 5}
         m_Offset: {x: 0, y: 0}
     m_Floats:
+    - SEA_LIGHT_ATTEN: 0.043
     - _AlphaMultiplier: 1
     - _BumpScale: 1
     - _ColorAlpha: 0
     - _Cull: 0
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
-    - _DiffPow: 30
-    - _DistFactor: 0.0001774
-    - _Distortion: 5.37
+    - _DiffPow: 80
+    - _DistFactor: 0.00002
+    - _Distortion: 5.64
     - _DstBlend: 0
     - _DstFactor: 10
     - _FresnelMax: 0.786
@@ -95,26 +96,29 @@ Material:
     - _JitterDepthScale: 0.88
     - _LightReflectionScale: 2
     - _LightSepcularScale: 38.3
-    - _LumiancePow: 2.07
+    - _LumiancePow: 3.77
     - _Metallic: 0
     - _Mode: 0
     - _Multiplier: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _RefractDistortion: 0.01
+    - _RefractDistortion: 0.226
     - _RefractionAlpha: 0.994
     - _RefractionDistortion: 0.6
-    - _RelativeHeightMin: 0.258
+    - _RelativeHeightMin: -3.09
     - _ShadowDistance: 10
     - _ShadowIntensity: 0.59
     - _SmoothnessTextureChannel: 0
-    - _SpecPow: 52.3
+    - _SpecAtten: 10
+    - _SpecFact: 45
+    - _SpecPow: 55.5
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcFactor: 5
-    - _TessellationScale: 100
+    - _TessellationScale: 20
     - _UVSec: 0
-    - _WaterAlpha: 0.097
+    - _ViewDirAdjust: 0.36
+    - _WaterAlpha: 0.279
     - _WaveScale: 4.2
     - _WaveXSpeed: 0.03
     - _WaveYSpeed: 0.03
@@ -128,15 +132,15 @@ Material:
     - _Color: {r: 0.40899786, g: 0.4757283, b: 0.9528302, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _FresnelColor: {r: 1, g: 1, b: 1, a: 1}
-    - _LightDir: {r: -1, g: 1, b: 1, a: 0}
+    - _LightDir: {r: -0.67, g: 1, b: 1.4, a: 0}
     - _LightReflectionBackColor: {r: 0, g: 0.08667151, b: 0.3018868, a: 1}
     - _LightReflectionColor: {r: 0.41460484, g: 0.557779, b: 0.7264151, a: 1}
     - _ReflectColor: {r: 0.2028302, g: 0.94123644, b: 1, a: 1}
     - _SeaBase: {r: 0.1, g: 0.19, b: 0.22, a: 1}
-    - _SeaWaterColor: {r: 0.42352948, g: 0.9254902, b: 0.4515677, a: 1}
+    - _SeaWaterColor: {r: 0.8, g: 0.9, b: 0.6, a: 1}
     - _ShadowColor: {r: 0.35, g: 0.2, b: 0.16, a: 1}
     - _SpecColor: {r: 1, g: 1, b: 1, a: 1}
     - _SpeedUV: {r: 0, g: 0, b: 0, a: 0}
-    - _Tex_ST: {r: 5, g: 5, b: 5, a: 5}
+    - _Tex_ST: {r: 5, g: 5, b: 10, a: 10}
     - _TintColor: {r: 1, g: 1, b: 1, a: 1}
     - _WaveSpeed: {r: 0.1, g: 0.001, b: 0, a: 0.26}
