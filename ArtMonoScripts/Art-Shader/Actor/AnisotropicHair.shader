@@ -1,4 +1,4 @@
-Shader "Lyf/Man/Hair"
+Shader "ArtStandard/Actor/Hair"
 {
     Properties
     {
@@ -15,17 +15,15 @@ Shader "Lyf/Man/Hair"
 
         [ToggleOff] _SpecularHighlights("Specular Highlights", Float) = 1.0
         [ToggleOff] _GlossyReflections("Glossy Reflections", Float) = 1.0
+        [ToggleOff] _AnisotropicWithDiffuse("Aniso With Diff",Float) =1.0
         _ShiftScale("Shift Scale", Float) = 1.0
         _BumpScale("Scale", Float) = 1.0
         _BumpMap("Normal Map", 2D) = "bump" {}
         _JitterMap("Jitter Map",2D) ="black" {}
-        _FlowMap("Flow Map",2D)="black"{}
         _ColPow("Color Pow",Range(0.1,2))=1
         _ShadowCol("Shadow Col",Color)=(0,0,0,1)
         _exp("Exponet",Range(10,200))=90
-        _WireExp("Wire Exponet",Range(1,10))=5
         _Specstrength("Spec Strength",Range(0,1))=0.5
-        _Diffstrength("Wire Strength",Range(0,1))=0.5
         _Stanstrength("Standard Strength",Range(0,1))=0.5
         [Enum(UnityEngine.Rendering.CullMode)] _Cull("Cull Mode", Float) = 0 
 		[Enum(UnityEngine.Rendering.BlendMode)] _SrcFactor("_SrcFactor",Float)=5
@@ -55,7 +53,7 @@ Shader "Lyf/Man/Hair"
             #pragma vertex vert
             #pragma fragment frag
 
-            #include "CustomForwardPBRCore.cginc"
+            #include "../CustomForwardPBRCore.cginc"
             #include "AnisotropicShading.cginc"
             struct a2v
             {

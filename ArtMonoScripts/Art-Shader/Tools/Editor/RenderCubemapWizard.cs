@@ -7,11 +7,6 @@ public class RenderCubemapWizard : ScriptableWizard
 	public Transform renderFromPosition;
 	public Cubemap cubemap;
 
-	void OnWizardUpdate()
-	{
-		string helpString = "Select transform to render from and cubemap to render into";
-		bool isValid = (renderFromPosition != null) && (cubemap != null);
-	}
 
 	void OnWizardCreate()
 	{

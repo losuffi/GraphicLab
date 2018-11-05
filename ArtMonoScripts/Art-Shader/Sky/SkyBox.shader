@@ -1,4 +1,4 @@
-Shader "Lyf/Environment/SkyStandarad" {
+Shader "ArtStandard/Environment/SkyBox/SkyStandarad" {
 Properties {
     [KeywordEnum(None, Simple, High Quality)] _SunDisk ("Sun", Int) = 2
     _SunSize ("Sun Size", Range(0,1)) = 0.04

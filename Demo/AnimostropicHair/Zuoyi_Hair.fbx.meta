@@ -16,7 +16,12 @@ ModelImporter:
     3300002: Hair_L:ZBrushPolyMesh3D
     4300000: Hair_L:ZBrushPolyMesh3D
     4300002: Hair2_L:ZBrushPolyMesh3D
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Hair_L_Hair
+    second: {fileID: 2100000, guid: 1e72a5c35bbe8ec498ca1354ce090a83, type: 2}
   materials:
     importMaterials: 1
     materialName: 0

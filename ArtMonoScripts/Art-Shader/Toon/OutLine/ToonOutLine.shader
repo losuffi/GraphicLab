@@ -1,9 +1,10 @@
-Shader"Lyf/Toon/Outline/Fresnel"
+Shader"ArtStandard/Toon/Outline/Fresnel"
 {
     Properties
     {
         _LineColor("Line Color",Color)=(1,1,1,1)
         _EdgeWidth("Edge Width",Range(0.1,10))=1
+        _EdgeClamp("Edge Clamp",Range(0,1))=0
     }
     SubShader
     {
@@ -23,7 +24,7 @@ Shader"Lyf/Toon/Outline/Fresnel"
             #pragma vertex vert
             #pragma fragment frag
             float4 _LineColor;
-            float _EdgeWidth;
+            float _EdgeWidth,_EdgeClamp;
             struct v2f
             {
                 float4 pos:SV_POSITION;
@@ -43,7 +44,9 @@ Shader"Lyf/Toon/Outline/Fresnel"
                 float3 viewDir=_WorldSpaceCameraPos.xyz-i.wPos;
                 float nDotv=dot(normalize(viewDir),i.worldN);
                 nDotv=saturate(nDotv);
-                return fixed4(_LineColor.rgb,pow(1-nDotv,1/_EdgeWidth));
+                float alpha=pow(1-nDotv,1/_EdgeWidth);
+                alpha=step(_EdgeClamp,alpha)*alpha;
+                return fixed4(_LineColor.rgb,alpha);
             }
             ENDCG
         }

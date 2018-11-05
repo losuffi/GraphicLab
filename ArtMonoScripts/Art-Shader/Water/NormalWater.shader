@@ -1,5 +1,5 @@
 
-Shader"Lyf/Environment/Water/FFT"
+Shader"ArtStandard/Environment/Water/FFT"
 {
     Properties
     {

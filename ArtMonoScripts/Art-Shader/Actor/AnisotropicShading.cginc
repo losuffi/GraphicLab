@@ -4,21 +4,13 @@
 #include "AutoLight.cginc"
 //#include "UnityStandardBRDF.cginc"
 sampler2D _JitterMap;
-sampler2D _FlowMap,_EmissionTex;
-float _exp,_WireExp;
-float _Specstrength;
-float _Diffstrength,_Stanstrength;
+sampler2D _EmissionTex;
+float _exp;
+float _Specstrength,_AnisotropicWithDiffuse;
+float _Stanstrength;
 float offset,_ShiftScale,_ColPow;
 float4 _JitterMap_ST,_AnisotropicSpecularColor,_AnisotropicDiffColor;
 fixed4 _EmissionCol,_ShadowCol;
-inline float3 FlowMapModifyDir(float3 X, float3 Y,float2 uv)
-{
-    float modify= tex2D(_FlowMap,uv).r;
-    modify=modify* 3.141592653*2;
-    float3 res=X*cos(modify)+Y*sin(modify);
-    res=normalize(res);
-    return res;
-}
 inline float activation(float input)
 {
     return 1/(1+exp(-input));
@@ -31,7 +23,6 @@ inline half4 BRDF3_Unity_PBS_Anisotropic (half4 oriCol, half3 n,half3 diffColor,
     UnityLight light, UnityIndirect gi)
 {
     float3 L=light.dir;
-    half nl = sqrt(1-dot(T,L)*dot(T,L));
     half onl=saturate(dot(n,L));
     half nv = sqrt(1-dot(T,viewDir)*dot(T,viewDir));
     float3 H=normalize(L+viewDir);
@@ -39,12 +30,10 @@ inline half4 BRDF3_Unity_PBS_Anisotropic (half4 oriCol, half3 n,half3 diffColor,
     half nH=sqrt(1-TH*TH);
     half at=smoothstep(-1,0,TH);
     nH=at*pow(nH,_exp);
-    nl=pow(nl,_WireExp);
-    fixed3 diffC=lerp(_ShadowCol,_AnisotropicDiffColor,nl);
     fixed3 specC=nH*_AnisotropicSpecularColor;
     oriCol=_ShadowCol+oriCol*(1-_ShadowCol);
-    half3 color=diffC*_Diffstrength+specC*onl*_Specstrength;
-    return half4((color+oriCol*_Stanstrength)/(_Diffstrength+_Specstrength+_Stanstrength), 1);
+    half3 color=specC*(_AnisotropicWithDiffuse*onl + (1-_AnisotropicWithDiffuse)) *_Specstrength;
+    return half4((color+oriCol*_Stanstrength), 1);
 }
 fixed4 AnisotropicMetallicPBRRender(float4 tex,float3 originNormal,float3 worldTangent,float3 worldPos,float3 eyeVec,float atten)
 {

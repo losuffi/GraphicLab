@@ -34,7 +34,6 @@ public class FogCameraEditor : Editor {
     private void OnDisable() {
         SceneView.onSceneGUIDelegate-=OnSceneView;
     }
-    private float last=15;
     void OnSceneView(SceneView sv)
     {
         
@@ -45,7 +44,7 @@ public class FogCameraEditor : Editor {
         {
             current=c.gameObject.AddComponent<FogCamera>();
         }
-        var gCamera=(target as FogCamera).GetComponent<Camera>();
+        //var gCamera=(target as FogCamera).GetComponent<Camera>();
         EditorUtility.CopySerialized(target,current);
         /*float percent=((c.farClipPlane/gCamera.farClipPlane));
         percent= percent/Mathf.Pow(1.7f, c.fieldOfView-gCamera.fieldOfView);

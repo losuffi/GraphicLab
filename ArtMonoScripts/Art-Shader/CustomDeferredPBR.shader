@@ -1,4 +1,4 @@
-Shader "Lyf/PBR/Deffered"
+Shader "ArtStandard/Standard/Deffered"
 {
     Properties
     {

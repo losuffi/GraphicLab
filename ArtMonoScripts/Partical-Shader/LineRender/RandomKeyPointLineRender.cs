@@ -4,8 +4,9 @@ public class RandomKeyPointLineRender : MonoBehaviour {
     private LineRenderer model;
     [SerializeField]
     private Vector3 InitOffset;
+    [SerializeField]
     private Vector4[] fftSpectrum; 
-    private Vector2[] hkt;
+    private Vector2[] hkt=null;
     private Vector2 Cmul(Vector2 lhs,Vector2 rhs)
     {
         return new Vector2(lhs.x*rhs.x-lhs.y*rhs.y,lhs.x*rhs.y+lhs.y*rhs.x);
@@ -47,11 +48,9 @@ public class RandomKeyPointLineRender : MonoBehaviour {
     }
     private void OnEnable() {
         model=GetComponent<LineRenderer>();
-        if(fftSpectrum.Length>0&&(fftSpectrum.Length&(fftSpectrum.Length-1))==0)
-        {
-            hkt=new Vector2[fftSpectrum.Length];
-        }
-        else
+        hkt=new Vector2[fftSpectrum.Length];
+        Debug.Log(hkt.Length);
+        if(fftSpectrum.Length==0||(fftSpectrum.Length&(fftSpectrum.Length-1))!=0)
         {
             throw new System.Exception("保证频谱长度，为2的整数次幂！！！！！！！！！！");
         }

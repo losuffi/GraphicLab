@@ -1,4 +1,4 @@
-Shader "Lyf/PBR/Forward"
+Shader "ArtStandard/Standard/Forward"
 {
     Properties
     {

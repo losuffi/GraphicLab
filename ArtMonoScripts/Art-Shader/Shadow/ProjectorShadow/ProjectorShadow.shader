@@ -1,4 +1,4 @@
-Shader "Lyf/Environment/Shadow/Projector"
+Shader "ArtStandard/Environment/Shadow/Projector"
 {
     SubShader
     {

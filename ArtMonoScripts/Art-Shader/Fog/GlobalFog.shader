@@ -1,6 +1,4 @@
-// Upgrade NOTE: replaced 'defined BLURFOG' with 'defined (BLURFOG)'
-
-Shader "Lyf/Environment/Fog"
+Shader "ArtStandard/PostEffect/PostFog"
 {
     Properties
     {
