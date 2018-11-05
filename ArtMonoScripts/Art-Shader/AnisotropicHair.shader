@@ -6,6 +6,8 @@ Shader "Lyf/Man/Hair"
         _AnisotropicSpecularColor("Specular Color",Color)=(1,1,1,1)
         _AnisotropicDiffColor("Hair Wire Color",Color)=(1,1,1,1)
         _MainTex("Albedo", 2D) = "white" {}
+        _EmissionTex("Emission",2D)="black"{}
+        _EmissionCol("Emission Color",Color)=(1,1,1,1)
         _Cutoff("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
         _GlossMapScale("Smoothness Scale", Range(0.0, 1.0)) = 1.0
 
@@ -18,6 +20,8 @@ Shader "Lyf/Man/Hair"
         _BumpMap("Normal Map", 2D) = "bump" {}
         _JitterMap("Jitter Map",2D) ="black" {}
         _FlowMap("Flow Map",2D)="black"{}
+        _ColPow("Color Pow",Range(0.1,2))=1
+        _ShadowCol("Shadow Col",Color)=(0,0,0,1)
         _exp("Exponet",Range(10,200))=90
         _WireExp("Wire Exponet",Range(1,10))=5
         _Specstrength("Spec Strength",Range(0,1))=0.5
@@ -97,7 +101,8 @@ Shader "Lyf/Man/Hair"
                 //return fixed4(i.tangentToWorld[2].xyz,1);
                 half dir=i.tangentToWorld[0].w;
                 //float3 T=normalize(i.tangentToWorld[0].xyz)*dir;
-                float3 T=normalize(cross(i.tangentToWorld[1].xyz,worldNormal))*dir;
+                float3 T=i.tangentToWorld[0].xyz;
+               // return fixed4( (T+1)/2,1);
                 // float3 Y=normalize(i.tangentToWorld[1].xyz);
                 // T= FlowMapModifyDir(T,Y,i.uv.xy);
                 // #if defined(SHADOWS_SCREEN)

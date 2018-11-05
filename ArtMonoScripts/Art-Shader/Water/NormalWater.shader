@@ -20,6 +20,9 @@ Shader"Lyf/Environment/Water/FFT"
         _WaterAlpha("Alpha",Range(0.001,1))=0.001
         _ViewDirAdjust("View Dir Adjust",Range(0,1))=0.15
         _LumiancePow("Lumiance pow",Range(1,10))=1
+        _SkyBox("SKY BOX",Cube)="_Skybox"{}
+        _ShadowAlpha("Shadow Alpha",Range(0,1))=0
+        _FresnelPow ("Fresenl Pow",Range(1,5))=3
     }
     SubShader
     {
@@ -42,9 +45,10 @@ Shader"Lyf/Environment/Water/FFT"
             sampler2D _CameraDepthTexture,_RefractionTex,_CshadowMap;
             float4 _Tex_ST,_LightDir;
             //From Cs
-            sampler2D _DispCS,_NormCS;
+            float4x4 shadow_Projector,ObjMat;
+            sampler2D _DispCS,_NormCS,_ShadowMap;
             float4 _DispCS_TexelSize;
-            float _Choppiness,_Distortion,_RefractDistortion,_ViewDirAdjust;
+            float _Choppiness,_Distortion,_RefractDistortion,_ViewDirAdjust,_ShadowAlpha;
             struct v2f
             {
                 float4 pos:SV_POSITION;
@@ -52,7 +56,7 @@ Shader"Lyf/Environment/Water/FFT"
                 float4 uv:TEXCOORD1;
                 float4 tangentToWorld[3]:TEXCOORD2;
                 float4 oriWPos:TEXCOORD5;
-                SHADOW_COORDS(6)
+                float4 shadowUV:TEXCOORD6;
             };
             inline float3 MovePos(float4 nuv)
             {
@@ -64,7 +68,8 @@ Shader"Lyf/Environment/Water/FFT"
             {
                 float4 wpos=mul(unity_ObjectToWorld,oPos);   
                 wpos.xyz+=MovePos(uv);
-                return mul(unity_WorldToObject,wpos);
+                oPos=mul(unity_WorldToObject,wpos);
+                return oPos;
             }
 
             v2f TessellationVertex(TVD v)
@@ -82,14 +87,18 @@ Shader"Lyf/Environment/Water/FFT"
                 float4 tangentworld=float4(UnityObjectToWorldDir(tangent),v.tangent.w);
                 float3x3 tTw=CreateTangentToWorldPerVertex(wn,tangentworld.xyz,-tangentworld.w);
                 o.oriWPos=mul(unity_ObjectToWorld,v.vertex);
-                float3 wpos=mul(unity_ObjectToWorld,opos);
+                float4 wpos=mul(unity_ObjectToWorld,opos);
+
+                o.shadowUV=mul(shadow_Projector,wpos);
+                // float4 epos=o.shadowUV*0.5f;
+                // epos.xy=epos.xy+epos.w;
+                // o.shadowUV.xy=epos.xy;
                 o.tangentToWorld[0].xyz=tTw[0];
                 o.tangentToWorld[1].xyz=tTw[1];
                 o.tangentToWorld[2].xyz=tTw[2];
                 o.tangentToWorld[0].w=wpos.x;
                 o.tangentToWorld[1].w=wpos.y;
                 o.tangentToWorld[2].w=wpos.z;
-                TRANSFER_SHADOW(o);
                 return o;
             }
             [UNITY_domain("tri")]
@@ -147,16 +156,18 @@ Shader"Lyf/Environment/Water/FFT"
                 #endif
                 bump=normalize(float3(i.tangentToWorld[0].xyz*bump.x+i.tangentToWorld[1].xyz*bump.y+i.tangentToWorld[2].xyz*bump.z));
                 //bump=lerp(bump,i.tangentToWorld[2].xyz,smoothstep(0,280,d));
-                #if defined(SHADOWS_SCREEN) && defined(_RECSHADOW)
-                UNITY_LIGHT_ATTENUATION(atten,i,wpos);
-                half bakedAtten = UnitySampleBakedOcclusion(0, wpos);
-                float zDist = dot(_WorldSpaceCameraPos - wpos, UNITY_MATRIX_V[2].xyz);
-                float fadeDist = UnityComputeShadowFadeDistance(wpos, zDist);
-                atten = UnityMixRealtimeAndBakedShadows(atten, bakedAtten, UnityComputeShadowFade(fadeDist));
-                #else
-                float atten=1;//tex2Dproj(_CshadowMap,UNITY_PROJ_COORD(originPos)).r;
-                #endif
-                //float atten=1;
+                // #if defined(SHADOWS_SCREEN) && defined(_RECSHADOW)
+                // UNITY_LIGHT_ATTENUATION(atten,i,wpos);
+                // half bakedAtten = UnitySampleBakedOcclusion(0, wpos);
+                // float zDist = dot(_WorldSpaceCameraPos - wpos, UNITY_MATRIX_V[2].xyz);
+                // float fadeDist = UnityComputeShadowFadeDistance(wpos, zDist);
+                // atten = UnityMixRealtimeAndBakedShadows(atten, bakedAtten, UnityComputeShadowFade(fadeDist));
+                // #else
+                // float atten=1;//tex2Dproj(_CshadowMap,UNITY_PROJ_COORD(originPos)).r;
+                // #endif
+                fixed atten=tex2Dproj(_ShadowMap,UNITY_PROJ_COORD(i.shadowUV)).r;
+                atten=lerp(atten,1,_ShadowAlpha);
+                //return fixed4(i.shadowUV.xy/i.shadowUV.w,0,1);
                 viewDir=normalize(viewDir+float3(0,1,0)*_ViewDirAdjust);
                 fixed3 seaColor=SeaColor((wpos-i.oriWPos),bump,normalize(_LightDir),viewDir,dist,reflCol,refrCol,rD,atten);
                 

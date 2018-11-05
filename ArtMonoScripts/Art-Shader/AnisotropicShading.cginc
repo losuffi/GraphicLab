@@ -4,12 +4,13 @@
 #include "AutoLight.cginc"
 //#include "UnityStandardBRDF.cginc"
 sampler2D _JitterMap;
-sampler2D _FlowMap;
+sampler2D _FlowMap,_EmissionTex;
 float _exp,_WireExp;
 float _Specstrength;
 float _Diffstrength,_Stanstrength;
-float offset,_ShiftScale;
+float offset,_ShiftScale,_ColPow;
 float4 _JitterMap_ST,_AnisotropicSpecularColor,_AnisotropicDiffColor;
+fixed4 _EmissionCol,_ShadowCol;
 inline float3 FlowMapModifyDir(float3 X, float3 Y,float2 uv)
 {
     float modify= tex2D(_FlowMap,uv).r;
@@ -39,7 +40,10 @@ inline half4 BRDF3_Unity_PBS_Anisotropic (half4 oriCol, half3 n,half3 diffColor,
     half at=smoothstep(-1,0,TH);
     nH=at*pow(nH,_exp);
     nl=pow(nl,_WireExp);
-    half3 color=nl*_AnisotropicDiffColor*_Diffstrength+nH*_AnisotropicSpecularColor*onl*_Specstrength;
+    fixed3 diffC=lerp(_ShadowCol,_AnisotropicDiffColor,nl);
+    fixed3 specC=nH*_AnisotropicSpecularColor;
+    oriCol=_ShadowCol+oriCol*(1-_ShadowCol);
+    half3 color=diffC*_Diffstrength+specC*onl*_Specstrength;
     return half4((color+oriCol*_Stanstrength)/(_Diffstrength+_Specstrength+_Stanstrength), 1);
 }
 fixed4 AnisotropicMetallicPBRRender(float4 tex,float3 originNormal,float3 worldTangent,float3 worldPos,float3 eyeVec,float atten)
@@ -69,8 +73,11 @@ fixed4 AnisotropicMetallicPBRRender(float4 tex,float3 originNormal,float3 worldT
     worldTangent=normalize(worldTangent+shift*originNormal);
     float4 col= UNITY_BRDF_PBS (s.diffColor, s.specColor, s.oneMinusReflectivity, s.smoothness, s.normalWorld, -s.eyeVec, gi.light, gi.indirect);
     float4 c=BRDF3_Unity_PBS_Anisotropic (col,s.normalWorld,s.diffColor, s.specColor, s.oneMinusReflectivity, worldTangent, s.smoothness, -s.eyeVec, gi.light, gi.indirect);
-    c.rgb+=Emission(tex.xy);
+    //c.rgb+=Emission(tex.xy);
+    c.rgb+=tex2D(_EmissionTex,tex).rgb*_EmissionCol.rgb;
     c.a=alpha;
+   // c.rgb=lerp(_ShadowCol.rgb,c.rgb,l);// c.rgb*(1-_ShadowCol.rgb);
+    c.rgb=pow(c.rgb,_ColPow);
     return OutputForward(c,s.alpha);
 }
 

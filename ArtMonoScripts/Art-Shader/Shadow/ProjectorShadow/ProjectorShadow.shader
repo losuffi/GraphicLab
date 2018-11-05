@@ -2,10 +2,11 @@ Shader "Lyf/Environment/Shadow/Projector"
 {
     SubShader
     {
+
         Pass
         {
             NAME "ForwardShadowRec"
-            Tags{"LightMode"="ForwardBase" "Queue"="Transparent"}
+            Tags{"LightMode"="ForwardBase" "Queue"="Overlay" }
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
             CGPROGRAM

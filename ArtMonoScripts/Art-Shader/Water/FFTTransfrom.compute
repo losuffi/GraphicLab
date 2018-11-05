@@ -92,7 +92,7 @@ void Lyfhkt(int2 id:SV_DispatchThreadID)
     float sin_=sin(omegat);
     float2 c0=(cos_,sin_);
     float2 c1=(cos_,-sin_);
-    float2 dy=Cadd(Cmul(_h0k,c0),Cmul(_h0k_conj,c1));
+    float2 dy=Cadd(Cmul(_h0k,c1),Cmul(_h0k_conj,c0));
     float2 slopex=Cmul(dy,float2(0,kx));
     float2 slopez=Cmul(dy,float2(0,kz));
     float2 dx=Cmul(dy,float2(0,-kx/klen));

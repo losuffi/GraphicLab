@@ -5,9 +5,9 @@
 #define ITER_GEOMETRY 5
 #define SEA_SPEED 0.8
 #define SEA_TIME (1.0+_Time.y*SEA_SPEED)
-float _SpecPow,_DiffPow,_RelativeHeightMin,_DistFactor,_WaterAlpha,SEA_LIGHT_ATTEN,_SpecAtten,_SpecFact;
+float _FresnelPow,_SpecPow,_DiffPow,_RelativeHeightMin,_DistFactor,_WaterAlpha,SEA_LIGHT_ATTEN,_SpecAtten,_SpecFact;
 float4 _SeaBase,_SeaWaterColor;
-
+samplerCUBE _SkyBox;
 float3x3 Eular(float3 ang)
 {
     float2 a1=float2(sin(ang.x),cos(ang.x));
@@ -94,8 +94,9 @@ float specular(float3 n,float3 l,float3 e,float s)
 }
 fixed3 SkyColor(float3 e,fixed3 reflC,float fresnel)
 {
+    //e=normalize(e);
     e.y=max(e.y,0.0);
-    fixed3 env=fixed3(pow(1.0-e.y,2.0),1.0-e.y,0.6+0.4*(1.0-e.y));
+    fixed3 env=texCUBE(_SkyBox,e).rgb;
     env=lerp(env,reflC,fresnel);
     return env;
 }
@@ -139,8 +140,8 @@ fixed3 SeaColorNoSpec(float3 p,float3 n,float3 l,float3 eye,float3 ofs,fixed3 re
 fixed3 SeaColor(float3 p,float3 n,float3 l,float3 eye,float3 ofs,fixed3 reflC,fixed3 refrC,float relDepth,float a)
 {
     float fresnel = clamp(1.0 - dot(n,eye), 0.0, 1.0);
-    fresnel = pow(fresnel,3.0) * 0.65;
-    fixed3 reflected=SkyColor(reflect(-eye,n),reflC,0.8);
+    fresnel = pow(fresnel,_FresnelPow) * 0.65;
+    fixed3 reflected=SkyColor(reflect(-eye,n),reflC,0.6);
     fixed3 refract=_SeaBase+diffuse(n,l,80)*_SeaWaterColor*0.12;
     #if defined(_REFRACTION)
     refract=lerp(refrC,refract,saturate(relDepth*_WaterAlpha));
@@ -154,5 +155,6 @@ fixed3 SeaColor(float3 p,float3 n,float3 l,float3 eye,float3 ofs,fixed3 reflC,fi
     color+=(_SeaWaterColor*relativeDst*SEA_LIGHT_ATTEN*atten);
     //color=lerp(color,reflC,fresnel);
     color+=specular(n,l,-eye,_SpecPow);
-    return color;
+    return color*a;
+
 }

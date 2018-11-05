@@ -63,6 +63,14 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ShadowMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SkyBox:
+        m_Texture: {fileID: 8900000, guid: 088cc094001f84c419a2d038c48a890a, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _SpecGlossMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -85,10 +93,12 @@ Material:
     - _DetailNormalMapScale: 1
     - _DiffPow: 80
     - _DistFactor: 0.00002
-    - _Distortion: 5.64
+    - _Distortion: 5.21
     - _DstBlend: 0
     - _DstFactor: 10
     - _FresnelMax: 0.786
+    - _FresnelPOw: 3.63
+    - _FresnelPow: 3
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
@@ -102,23 +112,24 @@ Material:
     - _Multiplier: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _RefractDistortion: 0.226
+    - _RefractDistortion: 0.504
     - _RefractionAlpha: 0.994
     - _RefractionDistortion: 0.6
     - _RelativeHeightMin: -3.09
+    - _ShadowAlpha: 0.481
     - _ShadowDistance: 10
     - _ShadowIntensity: 0.59
     - _SmoothnessTextureChannel: 0
-    - _SpecAtten: 10
-    - _SpecFact: 45
-    - _SpecPow: 55.5
+    - _SpecAtten: 8
+    - _SpecFact: 30
+    - _SpecPow: 73.5
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcFactor: 5
-    - _TessellationScale: 20
+    - _TessellationScale: 100
     - _UVSec: 0
-    - _ViewDirAdjust: 0.36
-    - _WaterAlpha: 0.279
+    - _ViewDirAdjust: 0.444
+    - _WaterAlpha: 0.109
     - _WaveScale: 4.2
     - _WaveXSpeed: 0.03
     - _WaveYSpeed: 0.03
@@ -141,6 +152,6 @@ Material:
     - _ShadowColor: {r: 0.35, g: 0.2, b: 0.16, a: 1}
     - _SpecColor: {r: 1, g: 1, b: 1, a: 1}
     - _SpeedUV: {r: 0, g: 0, b: 0, a: 0}
-    - _Tex_ST: {r: 5, g: 5, b: 10, a: 10}
+    - _Tex_ST: {r: 5, g: 5, b: 5, a: 5}
     - _TintColor: {r: 1, g: 1, b: 1, a: 1}
     - _WaveSpeed: {r: 0.1, g: 0.001, b: 0, a: 0.26}

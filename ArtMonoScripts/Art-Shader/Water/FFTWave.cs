@@ -211,6 +211,9 @@ public class FFTWave : MonoBehaviour
         int CSkernel=csFFTTransform.FindKernel("CMNorm");
         csFFTTransform.SetTexture(CSkernel,"dsX",output_dsX);
         csFFTTransform.SetTexture(CSkernel,"dsZ",output_dsZ);
+        // csFFTTransform.SetTexture(CSkernel,"dY",output_dY);
+        // csFFTTransform.SetTexture(CSkernel,"dX",output_dX);
+        // csFFTTransform.SetTexture(CSkernel,"dZ",output_dZ);
         csFFTTransform.SetTexture(CSkernel,"NormOut",normalMap);
         csFFTTransform.SetFloat("_normalSize",norSize);
         csFFTTransform.Dispatch(CSkernel,size/32,size/32,1);
@@ -225,6 +228,6 @@ public class FFTWave : MonoBehaviour
         InverseFFT(fftInput_dsZ,output_dsZ);
         CombinedDisp();
         CombinedNorm();
-        rend.sharedMaterial.SetTexture("_MainTex",output_dX);
+        rend.sharedMaterial.SetTexture("_MainTex",output_dY);
     }
 }

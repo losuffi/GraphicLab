@@ -21,6 +21,8 @@ public class ProjectorShadow: MonoBehaviour {
 	public RenderTexture shadowMapMsg;
 	[SerializeField]
 	private MeshRenderer mesh;
+	[SerializeField]
+	private Vector3 Offset;
 	private RenderTexture renderTemp;
 	private RenderTexture shadowMap;
 	private Projector m_projector;
@@ -65,7 +67,9 @@ public class ProjectorShadow: MonoBehaviour {
 		computKernel.SetInt("SCount",SampleCount);
 		computKernel.SetFloat("Strengthess",Strengthess);
 		computKernel.Dispatch(Kernel,BufferSize,BufferSize/1024,1);
-	}
+		Matrix4x4 transMat= Matrix4x4.TRS((Offset+Vector3.one)*0.5f,Quaternion.identity,Vector3.one*0.5f) * m_Cam.projectionMatrix*m_Cam.worldToCameraMatrix;
+		Shader.SetGlobalMatrix("shadow_Projector",transMat);
+	} 
 
     private void CreateShadowCam()
     {
@@ -109,7 +113,15 @@ public class ProjectorShadow: MonoBehaviour {
 
     public void OnProjectorShadow()
 	{
-		m_projector.material.SetTexture("_ShadowMap",shadowMap);
-		mesh.sharedMaterial.SetTexture("_MainTex",shadowMap);
+		if(mesh==null)
+		{
+			m_projector.enabled=true;
+			m_projector.material.SetTexture("_ShadowMap",shadowMap);
+		}
+		else
+		{
+			m_projector.enabled=false;
+			mesh.sharedMaterial.SetTexture("_ShadowMap",shadowMap);
+		}
 	}
 }
