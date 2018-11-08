@@ -24,7 +24,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _EmissionTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 09aa09d8e17a2ba49a4099943bb83716, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _FlowMap:
@@ -33,10 +33,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _JitterMap:
         m_Texture: {fileID: 2800000, guid: 3e26e9e072952d743b8167979e0f92be, type: 3}
-        m_Scale: {x: 8, y: 8}
+        m_Scale: {x: 10, y: 10}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: b6d18a2260f586a44a0adb53d89d3d24, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -46,27 +46,28 @@ Material:
     m_Floats:
     - _AnisotropicWithDiffuse: 0
     - _BumpScale: 1
-    - _ColPow: 2
+    - _ColPow: 1
     - _Cull: 0
     - _Cutoff: 1
-    - _Diffstrength: 0
+    - _Diffstrength: 1
     - _DstFactor: 0
-    - _GlossMapScale: 0.597
+    - _GlossMapScale: 0.7
     - _GlossyReflections: 1
     - _ShiftScale: 0.5
-    - _Specstrength: 0.18
+    - _Specstrength: 1
     - _SpecularHighlights: 1
     - _SrcFactor: 1
-    - _Stanstrength: 0.477
+    - _Stanstrength: 0
     - _TessellationScale: 8
     - _WireExp: 2.99
     - _ZWrite: 1
-    - _exp: 100
+    - _exp: 1
     - _strength: 100
     m_Colors:
     - _AnisotropicDiffColor: {r: 1, g: 1, b: 1, a: 1}
-    - _AnisotropicSpecularColor: {r: 0.7335796, g: 0.8665036, b: 0.990566, a: 1}
-    - _Color: {r: 0, g: 0, b: 0, a: 1}
-    - _EmissionCol: {r: 1, g: 1, b: 1, a: 1}
-    - _ShadowCol: {r: 0.21698111, g: 0.21698111, b: 0.21698111, a: 1}
+    - _AnisotropicSpecularColor: {r: 0.39916342, g: 0.416815, b: 0.4339623, a: 1}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _EmissionCol: {r: 0, g: 0, b: 0, a: 1}
+    - _ShadowCol: {r: 0, g: 0, b: 0, a: 1}
+    - _rimParams: {r: 0, g: 1, b: 0.2, a: 0}
     - _specColor: {r: 1, g: 1, b: 1, a: 1}

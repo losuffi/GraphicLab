@@ -20,11 +20,14 @@ Shader "ArtStandard/Actor/Hair"
         _BumpScale("Scale", Float) = 1.0
         _BumpMap("Normal Map", 2D) = "bump" {}
         _JitterMap("Jitter Map",2D) ="black" {}
+        _FlowMap("Flow Map",2D)="black"{}
         _ColPow("Color Pow",Range(0.1,2))=1
         _ShadowCol("Shadow Col",Color)=(0,0,0,1)
-        _exp("Exponet",Range(10,200))=90
+        _exp("Exponet",Range(1,200))=4
         _Specstrength("Spec Strength",Range(0,1))=0.5
+        _Diffstrength("Diff Strength",Range(0,1))=0.5
         _Stanstrength("Standard Strength",Range(0,1))=0.5
+        _rimParams("RimParams",Vector)=(0,5,1,0)
         [Enum(UnityEngine.Rendering.CullMode)] _Cull("Cull Mode", Float) = 0 
 		[Enum(UnityEngine.Rendering.BlendMode)] _SrcFactor("_SrcFactor",Float)=5
 		[Enum(UnityEngine.Rendering.BlendMode)] _DstFactor("_DstFactor",Float)=10
@@ -53,24 +56,8 @@ Shader "ArtStandard/Actor/Hair"
             #pragma vertex vert
             #pragma fragment frag
 
-            #include "../CustomForwardPBRCore.cginc"
+            #include "../Bin/CustomForwardPBRCore.cginc"
             #include "AnisotropicShading.cginc"
-            struct a2v
-            {
-                float4 vertex:POSITION;
-                float4 tangent:TANGENT;
-                float4 texcoord:TEXCOORD0;
-                float3 normal:NORMAL;
-            };
-            struct Input
-            {
-                float4 pos:SV_POSITION;
-                float4 uv:TEXCOORD0;
-                float3 eyeVec:TEXCOORD1;
-                float3 worldPos:TEXCOORD2;
-                float4 tangentToWorld[3]:TEXCOORD3;
-                SHADOW_COORDS(6)
-            };
             Input vert(a2v v)
             {
                 UNITY_SETUP_INSTANCE_ID(v);
@@ -96,19 +83,8 @@ Shader "ArtStandard/Actor/Hair"
             {
                 UNITY_APPLY_DITHER_CROSSFADE(i.pos.xy);
                 float3 worldNormal=PerPixelWN(i.uv,i.tangentToWorld);
-                //return fixed4(i.tangentToWorld[2].xyz,1);
-                half dir=i.tangentToWorld[0].w;
-                //float3 T=normalize(i.tangentToWorld[0].xyz)*dir;
-                float3 T=i.tangentToWorld[0].xyz;
-               // return fixed4( (T+1)/2,1);
-                // float3 Y=normalize(i.tangentToWorld[1].xyz);
-                // T= FlowMapModifyDir(T,Y,i.uv.xy);
-                // #if defined(SHADOWS_SCREEN)
+                float3 T=normalize(FlowDir(i.tangentToWorld[0].xyz,i.tangentToWorld[1].xyz,i.uv));
                 UNITY_LIGHT_ATTENUATION(atten,i,i.worldPos);
-                // #else
-                // float atten=1;
-                // #endif
-                //return fixed4(T,1);
                 return AnisotropicMetallicPBRRender(i.uv,worldNormal,T,i.worldPos,i.eyeVec,atten);
             }
             ENDCG

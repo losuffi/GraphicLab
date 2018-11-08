@@ -14,4 +14,14 @@
 
 ![c2](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A9.gif)
 
+​	修改了算法后：
+
+- without rim lightting
+
+![c2](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A10.gif)
+
+- with rim lightting ：0.2
+
+![c2](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A11.gif)
+
 Path:Assets/Demo/AnimostropicHair/Hair.unity

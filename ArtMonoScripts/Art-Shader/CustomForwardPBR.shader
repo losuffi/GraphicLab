@@ -41,23 +41,7 @@ Shader "ArtStandard/Standard/Forward"
             #pragma vertex vert
             #pragma fragment frag
 
-            #include "CustomForwardPBRCore.cginc"
-            struct a2v
-            {
-                float4 vertex:POSITION;
-                float4 tangent:TANGENT;
-                float4 texcoord:TEXCOORD0;
-                float3 normal:NORMAL;
-            };
-            struct Input
-            {
-                float4 pos:SV_POSITION;
-                float4 uv:TEXCOORD0;
-                float3 eyeVec:TEXCOORD1;
-                float3 worldPos:TEXCOORD2;
-                float4 tangentToWorld[3]:TEXCOORD3;
-                SHADOW_COORDS(6)
-            };
+            #include "Bin/CustomForwardPBRCore.cginc"
             Input vert(a2v v)
             {
                 UNITY_SETUP_INSTANCE_ID(v);
