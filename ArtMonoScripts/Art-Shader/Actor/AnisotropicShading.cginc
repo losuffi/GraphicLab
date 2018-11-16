@@ -6,7 +6,7 @@
 sampler2D _JitterMap,_FlowMap;
 sampler2D _EmissionTex;
 float _exp;
-float _Specstrength,_AnisotropicWithDiffuse,_Diffstrength;
+float _Specstrength,_AnisotropicWithDiffuse,_Diffstrength,_AnisotropicBP;
 float _Stanstrength;
 float offset,_ShiftScale,_ColPow;
 float4 _JitterMap_ST,_AnisotropicSpecularColor,_AnisotropicDiffColor;
@@ -31,7 +31,8 @@ inline half4 BRDF3_Unity_PBS_Anisotropic (half3 olcolor,half4 oriCol, half3 n,ha
     UnityLight light, UnityIndirect gi)
 {
     float3 L=light.dir;
-    half nl=saturate(sqrt(1-dot(n,L)*dot(n,L)));
+    half NdotL= saturate(dot(n,L));
+    half nl=saturate(sqrt(1-dot(T,L)*dot(T,L)));
     half nv = saturate(sqrt(1-dot(T,viewDir)*dot(T,viewDir)));
     float3 H=Unity_SafeNormalize (float3(light.dir) + viewDir);
     half TH=dot(T,H);
@@ -43,6 +44,7 @@ inline half4 BRDF3_Unity_PBS_Anisotropic (half3 olcolor,half4 oriCol, half3 n,ha
     float perceptualRoughness = SmoothnessToPerceptualRoughness (smoothness);
     half diffuseTerm = DisneyDiffuse(nv, nl, lh, perceptualRoughness) * nl;
     float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
+#if _STANDMODEL
 #if UNITY_BRDF_GGX
     // GGX with roughtness to 0 would mean no specular at all, using max(roughness, 0.002) here to match HDrenderloop roughtness remapping.
     roughness = max(roughness, 0.002);
@@ -84,6 +86,12 @@ inline half4 BRDF3_Unity_PBS_Anisotropic (half3 olcolor,half4 oriCol, half3 n,ha
 
     fixed3 specC=specularTerm*_AnisotropicSpecularColor*FresnelTerm (_AnisotropicSpecularColor, lh);
     specC+=surfaceReduction*gi.specular * FresnelLerp (_AnisotropicSpecularColor, grazingTerm, nv);
+#elif _BPMODEL
+    fixed3 specC=nH*_AnisotropicSpecularColor;
+#else
+    fixed3 specC=nH*_AnisotropicSpecularColor;
+#endif
+    specC=_AnisotropicWithDiffuse*NdotL*specC+(1-_AnisotropicWithDiffuse)*specC;
     oriCol=_ShadowCol+oriCol*(1-_ShadowCol);
     half3 difC=diffColor*(gi.diffuse+light.color*diffuseTerm);
 

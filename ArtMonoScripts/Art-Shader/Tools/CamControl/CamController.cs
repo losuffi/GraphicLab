@@ -19,7 +19,7 @@ public class CamController : MonoBehaviour {
             return;
         }
         Cursor.lockState= CursorLockMode.Locked;
-        transform.rotation*=(Quaternion.AngleAxis(Input.GetAxis("Mouse X")*rotaSpeed*Time.deltaTime,Vector3.up)*Quaternion.AngleAxis(Input.GetAxis("Mouse Y")*rotaSpeed*Time.deltaTime,Vector3.left));
+        transform.rotation=(Quaternion.AngleAxis(Input.GetAxis("Mouse X")*rotaSpeed*Time.deltaTime,Vector3.up)*Quaternion.AngleAxis(Input.GetAxis("Mouse Y")*rotaSpeed*Time.deltaTime,Vector3.left))*transform.rotation;
         if(Input.GetKey(KeyCode.W))
         {
             transform.position+=Speed*Time.deltaTime*transform.forward;

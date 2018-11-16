@@ -116,7 +116,7 @@ Material:
     - _RefractionAlpha: 0.994
     - _RefractionDistortion: 0.6
     - _RelativeHeightMin: -3.09
-    - _ShadowAlpha: 0.481
+    - _ShadowAlpha: 0.47
     - _ShadowDistance: 10
     - _ShadowIntensity: 0.59
     - _SmoothnessTextureChannel: 0

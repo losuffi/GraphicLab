@@ -21,7 +21,7 @@ RWTexture2D<float4> hkt_x;
 RWTexture2D<float4> hkt_z;
 RWTexture2D<float4> hkt_nx;
 RWTexture2D<float4> hkt_nz;
-uint _Size;
+int _Size;
 float _G;
 float _T;
 float _A;
@@ -79,7 +79,7 @@ float dispersion(float kl)
 [numthreads(32,32,1)]
 void Lyfhkt(int2 id:SV_DispatchThreadID)
 {
-    int2 coord=id-_Size.xx/2;
+    int2 coord=id-(_Size.xx>>1);
     float2 k=coord*PI2/domainSize;
     float kx=k.x;
     float kz=k.y;
@@ -90,8 +90,8 @@ void Lyfhkt(int2 id:SV_DispatchThreadID)
     float omegat=dispersion(klen)*_T;
     float cos_=cos(omegat);
     float sin_=sin(omegat);
-    float2 c0=(cos_,sin_);
-    float2 c1=(cos_,-sin_);
+    float2 c0=float2(cos_,sin_);
+    float2 c1=float2(cos_,-sin_);
     float2 dy=Cadd(Cmul(_h0k,c1),Cmul(_h0k_conj,c0));
     float2 slopex=Cmul(dy,float2(0,kx));
     float2 slopez=Cmul(dy,float2(0,kz));

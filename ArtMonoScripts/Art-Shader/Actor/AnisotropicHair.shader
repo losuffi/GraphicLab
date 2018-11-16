@@ -50,7 +50,8 @@ Shader "ArtStandard/Actor/Hair"
             #pragma shader_feature _METALLICGLOSSMAP
             #pragma shader_feature _ _GLOSSYRELECTIONS_OFF
             #pragma shader_feature _FADEINBACKGROUND
-
+            #pragma shader_feature _BPMODEL
+            #pragma shader_feature _STANDMODEL
             #pragma multi_compile_fwdbase 
 
             #pragma vertex vert
