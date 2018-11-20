@@ -1,0 +1,11 @@
+#pragma kernel UpdateEpipolarTex
+
+float SampleStep;
+float InterpolateStep;
+float2 LightPoint;
+RWTexture2D<int2> EpipolarTex;
+[numthreads(32,32,1)]
+void UpdateEpipolarTex(uint2 id:SV_DispatchThreadID)
+{
+    EpipolarTex[id]=int2(0,0);
+}
