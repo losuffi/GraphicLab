@@ -1,5 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.Rendering;
+using System;
+
 [RequireComponent(typeof(Camera)),DisallowMultipleComponent]
 public class PostManager : MonoBehaviour {
 
@@ -11,7 +14,8 @@ public class PostManager : MonoBehaviour {
 
     private static PostManager instantiete;
     public static PostManager Instantiete{get{return instantiete;}}
-    
+    private Camera cam;
+
     public class PostAgent
     {
         public int Priority;
@@ -33,6 +37,10 @@ public class PostManager : MonoBehaviour {
     {
         get
         {
+            if(initPost==null)
+            {
+                CreateInitBuffer();
+            }
             return initPost;
         }
     }
@@ -40,9 +48,16 @@ public class PostManager : MonoBehaviour {
     {
         get
         {
+            if(depthPost==null)
+            {
+                CreateDepthBuffer();
+            }
             return depthPost;
         }
     }
+
+   
+
     public RenderTexture NormalPost
     {
         get
@@ -81,23 +96,39 @@ public class PostManager : MonoBehaviour {
     {
         if(instantiete==null)
             instantiete=this;       
+        cam=GetComponent<Camera>();
     }
 
 
     private void CreateCurrentBuffer()
     {
         currentPost=new RenderTexture(Screen.width,Screen.height,0,RenderTextureFormat.ARGB32);
+        depthPost.enableRandomWrite=true;
+        currentPost.Create();
     }
     private void CreateInitBuffer()
     {
         initPost=new RenderTexture(Screen.width,Screen.height,0,RenderTextureFormat.ARGB32);
+        initPost.enableRandomWrite=true;
+        initPost.Create();
     }
-    
+    private void CreateDepthBuffer()
+    {
+        depthPost=new RenderTexture(Screen.width,Screen.height,24);
+        depthPost.enableRandomWrite=true;
+        depthPost.Create();
+        CommandBuffer buf =new CommandBuffer();
+        buf.name="buffer";
+        cam.AddCommandBuffer(CameraEvent.AfterDepthTexture,buf);
+        buf.Clear();
+        buf.Blit(BuiltinRenderTextureType.Depth,depthPost);
+    }
     private void OnRenderImage(RenderTexture src, RenderTexture dest) 
     {
         initPost=src;       
         if(currentPost==null)
         {
+            Graphics.Blit(initPost,dest);
             return;
         }
         Graphics.Blit(initPost,currentPost);

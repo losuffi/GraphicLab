@@ -21,7 +21,7 @@ public class ShadowCollector : MonoBehaviour {
         }
         cb=new CommandBuffer();
         cb.name="CustomShadow";
-        _light.AddCommandBuffer(LightEvent.AfterScreenspaceMask,cb);
+        _light.AddCommandBuffer(LightEvent.AfterShadowMap,cb);
         UpdateBuffer();
     }
     private void OnDisable() {
@@ -31,7 +31,5 @@ public class ShadowCollector : MonoBehaviour {
         cb.Clear();
         cb.SetShadowSamplingMode(BuiltinRenderTextureType.CurrentActive,ShadowSamplingMode.RawDepth);
         cb.Blit(BuiltinRenderTextureType.CurrentActive,shadowmap);
-        var s=Shader.PropertyToID("_CshadowMap");
-        Shader.SetGlobalTexture(s,shadowmap);
     }
 }

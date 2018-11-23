@@ -1,11 +1,74 @@
 #pragma kernel UpdateEpipolarTex
+#pragma kernel LerpWork
+RWTexture2D<float4> EpipolarTex;
 
-float SampleStep;
-float InterpolateStep;
-float2 LightPoint;
-RWTexture2D<int2> EpipolarTex;
-[numthreads(32,32,1)]
-void UpdateEpipolarTex(uint2 id:SV_DispatchThreadID)
+
+float LineDensity;
+float InitSampleCount;
+float InterpolateSampleCount;
+float DepthThreshold;
+float2 SourceCoord;
+
+Texture2D<float> DepthBuffer;
+float2 DepthBufferSize;
+float2 BoundaryEpipolarPoint(uint index)
 {
-    EpipolarTex[id]=int2(0,0);
+    float st=2.0f/(LineDensity);
+    uint k= index % LineDensity;
+    uint u= index / LineDensity;
+    float res=k*st;
+    if(u==0)
+    {
+        return float2(res-1,1);
+    }
+    else if(u==1)
+    {
+        return float2(1,1-res);
+    }
+    else if(u==2)
+    {
+        return float2(1-res,-1);
+    }
+    else
+    {
+        return float2(-1,res-1);
+    }
+}
+groupshared half cache[32][32];
+[numthreads(32,32,1)]
+void UpdateEpipolarTex(uint2 id:SV_DispatchThreadID,uint2 tid:SV_GroupThreadID)
+{
+    float2 target=BoundaryEpipolarPoint(id.x);
+    half flag=1-step(0.1f,(id.y%InterpolateSampleCount)*1.0f);
+    float2 st=(target-SourceCoord)/(InitSampleCount*InterpolateSampleCount);
+    float2 uv=id.y*st+SourceCoord;
+    uv=(uv+1)/2;
+    float d=DepthBuffer[uv*DepthBufferSize];
+    cache[tid.x][tid.y]=d;
+    GroupMemoryBarrierWithGroupSync();
+    float thr=0;
+    if(tid.y>=1)
+    {
+       thr= cache[tid.x][tid.y]-cache[tid.x][tid.y-1];
+       thr=abs(thr);
+    }
+    EpipolarTex[id]=float4(uv,step(0.5,flag+step(DepthThreshold,thr)),d);
+}
+Texture2D<float4> input;
+Texture2D<float4> samples;
+RWTexture2D<float4> outPut;
+[numthreads(32,32,1)]
+void LerpWork(int2 id:SV_DispatchThreadID)
+{
+    int m=0;
+    while(1-step(0.1, input[int2(id.x,id.y-m)].z))
+    {
+        m++;
+    }
+    int n=0;
+    while(1-step(0.1, input[int2(id.x,id.y+n)].z))
+    {
+        n++;
+    }
+    outPut[id]=lerp(samples[id-int2(0,m)] ,samples[id+int2(0,n)], (m*1.0f/(m+n)));
 }
