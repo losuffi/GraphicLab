@@ -1,5 +1,9 @@
 #pragma kernel UpdateEpipolarTex
 #pragma kernel LerpWork
+#pragma kernel TransformSecPlane
+#pragma kernel UpdateSource 
+#pragma kernel ResPlane
+#pragma kernel TransformPlane
 RWTexture2D<float4> EpipolarTex;
 
 
@@ -8,42 +12,61 @@ float InitSampleCount;
 float InterpolateSampleCount;
 float DepthThreshold;
 float2 SourceCoord;
-
+float4 ScreenParams;
+float4 EpipolartParmas;
 Texture2D<float> DepthBuffer;
+RWTexture2D<float3> TransformTex;
 float2 DepthBufferSize;
-float2 BoundaryEpipolarPoint(uint index)
+float2 RectTexSize;
+float2 epipolarSize;
+float2 BoundaryEpipolarPoint(half indexH)
 {
-    float st=2.0f/(LineDensity);
-    uint k= index % LineDensity;
-    uint u= index / LineDensity;
-    float res=k*st;
-    if(u==0)
-    {
-        return float2(res-1,1);
-    }
-    else if(u==1)
-    {
-        return float2(1,1-res);
-    }
-    else if(u==2)
-    {
-        return float2(1-res,-1);
-    }
-    else
-    {
-        return float2(-1,res-1);
-    }
+    uint boundary=clamp(floor(indexH*4),0,3);
+    float PosOnBoundary=frac(indexH*4);
+    float BoundaryCoord=-1 + 2.0*PosOnBoundary;
+    float4 BoundaryXCoord=float4(BoundaryCoord,1,-BoundaryCoord,-1);
+    float4 BoundaryYCoord=float4(1,-BoundaryCoord,-1,BoundaryCoord);
+    half4 BoundaryFlags=half4(boundary==uint4(0,1,2,3));
+    return float2(dot(BoundaryXCoord,BoundaryFlags),dot(BoundaryYCoord,BoundaryFlags));
+}
+float2 GetEntryPoint(float2 exitP)
+{
+    float2 RayDir=exitP-SourceCoord;
+    float DistToExitBoundary=length(RayDir);
+    RayDir/=DistToExitBoundary;
+    float4 IsCorrectIntersectionFlags=abs(RayDir.xyxy)>1e-5;
+    float4 DisToBoundaries=(float4(-1,-1,1,1)-SourceCoord.xyxy)/(RayDir.xyxy+(1-IsCorrectIntersectionFlags));
+    IsCorrectIntersectionFlags= IsCorrectIntersectionFlags && (DisToBoundaries<(DistToExitBoundary-(1e-4)));
+    DisToBoundaries=IsCorrectIntersectionFlags * DisToBoundaries +(1-IsCorrectIntersectionFlags)*float4(-10,-10,-10,-10);
+    float FirstIntersecDist=0;
+    FirstIntersecDist=max(FirstIntersecDist,DisToBoundaries.x);
+    FirstIntersecDist=max(FirstIntersecDist,DisToBoundaries.y);
+    FirstIntersecDist=max(FirstIntersecDist,DisToBoundaries.z);
+    FirstIntersecDist=max(FirstIntersecDist,DisToBoundaries.w);
+    return SourceCoord+RayDir*FirstIntersecDist;
+}
+float2 ReLocatedExitPoint(float2 exitP,float2 entryP)
+{
+    float eSliceScreenLen=length((exitP-entryP)*ScreenParams.xy/2);
+    return entryP+(exitP-entryP)*max(EpipolartParmas.x/eSliceScreenLen,1);
 }
 groupshared half cache[32][32];
 [numthreads(32,32,1)]
 void UpdateEpipolarTex(uint2 id:SV_DispatchThreadID,uint2 tid:SV_GroupThreadID)
 {
-    float2 target=BoundaryEpipolarPoint(id.x);
+    float2 ExitPoint=BoundaryEpipolarPoint(id.x/epipolarSize.x);
+    float2 EntryPoint=GetEntryPoint(ExitPoint);
+    ExitPoint=ReLocatedExitPoint(ExitPoint,EntryPoint);
+    float2 uv=lerp(EntryPoint,ExitPoint,saturate(id.y/epipolarSize.y) );
+
     half flag=1-step(0.1f,(id.y%InterpolateSampleCount)*1.0f);
-    float2 st=(target-SourceCoord)/(InitSampleCount*InterpolateSampleCount);
-    float2 uv=id.y*st+SourceCoord;
-    uv=(uv+1)/2;
+    if(abs(uv.x)>(1+1e-4)||abs(uv.y)>(1+1e-4))
+    {
+        uv=-1;
+        flag=0;
+    }
     float d=DepthBuffer[uv*DepthBufferSize];
+    TransformTex[floor(uv*RectTexSize)]=float3(id/epipolarSize,1);
     cache[tid.x][tid.y]=d;
     GroupMemoryBarrierWithGroupSync();
     float thr=0;
@@ -61,14 +84,82 @@ RWTexture2D<float4> outPut;
 void LerpWork(int2 id:SV_DispatchThreadID)
 {
     int m=0;
-    while(1-step(0.1, input[int2(id.x,id.y-m)].z))
+    while(1)
     {
         m++;
+        if(input[int2(id.x,id.y-m)].z>0)
+            break;
+        if(m>id.y)
+            break;
     }
     int n=0;
-    while(1-step(0.1, input[int2(id.x,id.y+n)].z))
+    while(1)
     {
         n++;
+        if(input[int2(id.x,id.y+n)].z>0)
+            break;
+        if(n>id.y)
+            break;
     }
     outPut[id]=lerp(samples[id-int2(0,m)] ,samples[id+int2(0,n)], (m*1.0f/(m+n)));
+}
+RWTexture2D<float4> SecPlane;
+Texture2D<float3> temp;
+Texture2D<float4> temp4;
+inline half3 LM(float3 a,float3 b)
+{
+    return a-b;
+}
+float sigmaS,sigmaI;
+groupshared half3 cacheC[32][32];
+[numthreads(32,32,1)]
+void TransformSecPlane(int2 id:SV_DispatchThreadID,int2 tid:SV_GroupThreadID)
+{
+    float3 coor= temp[id];
+    float3 res=float3(0,0,0)+samples[coor.xy*epipolarSize].xyz;
+    SecPlane[id]=float4(res,coor.z);
+}
+[numthreads(32,32,1)]
+void TransformPlane(int2 id:SV_DispatchThreadID)
+{
+    half normalTotal=0;
+    half3 rc=half3(0,0,0);
+    for(int i=-5;i<6;i++)
+    {
+        for(int j=-5;j<6;j++)
+        {
+            half3 intensity=LM(temp4[id+int2(i,j)].xyz,temp4[id].xyz);
+            half tot=(i*i+j*j)*sigmaS+(dot(intensity,intensity))*sigmaI;
+            half indicS =exp(-tot)*temp4[id+int2(i,j)].w;
+            rc+=temp4[id+int2(i,j)].xyz*indicS;
+            normalTotal+=indicS;
+        }
+    }
+    rc=rc/normalTotal;
+    SecPlane[id]=float4(saturate(rc),1);
+}
+[numthreads(32,32,1)]
+void UpdateSource(int2 id:SV_DispatchThreadID)
+{
+    TransformTex[id]=float3(0,0,0);
+}
+float2 sizef;
+float2 rectSizef;
+RWTexture2D<float4> opt;
+[numthreads(8,8,1)]
+void ResPlane(int2 id:SV_DispatchThreadID)
+{
+    float2 oUV=id*sizef;
+    float2 nUpos=oUV*RectTexSize;
+    int2 lPosMin=floor(nUpos);
+    int2 lposA=int2(lPosMin.x,lPosMin.y);
+    int2 lposB=int2(lPosMin.x+1,lPosMin.y);
+    int2 lposC=int2(lPosMin.x,lPosMin.y+1);
+    int2 lposD=int2(lPosMin.x+1,lPosMin.y+1);
+    half u_ratio=nUpos.x-lPosMin.x;
+    half v_ratio=nUpos.y-lPosMin.y;
+    half3 horiA=lerp(temp[lposA].xyz,temp[lposB].xyz,u_ratio);
+    half3 horiB=lerp(temp[lposC].xyz,temp[lposD].xyz,u_ratio);
+    //opt[id]=float4(lerp(horiA,horiB,v_ratio),1);
+    opt[id]=float4(samples[id].xyz+lerp(horiA,horiB,v_ratio),1);
 }

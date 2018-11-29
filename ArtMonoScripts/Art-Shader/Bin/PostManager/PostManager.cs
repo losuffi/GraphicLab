@@ -21,6 +21,17 @@ public class PostManager : MonoBehaviour {
         public int Priority;
         public delegate void TriggerFunc();
         public TriggerFunc Trigger;
+        private RenderTexture buffer;
+        public RenderTexture Buf
+        {
+            get{return buffer;}
+        }
+        public PostAgent(TriggerFunc func,RenderTexture buf,int p=0)
+        {
+            this.Trigger=func;
+            this.Priority=p;
+            this.buffer=buf;
+        }
     }
     public RenderTexture CurrentBuffer
     {
@@ -75,22 +86,28 @@ public class PostManager : MonoBehaviour {
         depthPost=null;
         normalPost.Release();
         normalPost=null;
+        agentList=null;
+        GC.Collect();
     }
-
+    private void OnDisable() {
+        ReleaseAllBuffer();
+    }
     public void PushInPostStack(PostAgent agent)   
     {
         if(agentList==null)
         {
             agentList=new List<PostAgent>(10);
         }
+        int index=0;
         for(int i=0;i<agentList.Count;i++)
         {
             if(agentList[i].Priority<agent.Priority)
             {
-                agentList.Insert(i,agent);
                 break;
             }
+            index++;
         }
+        agentList.Insert(index,agent);
     }
     private void OnEnable() 
     {
@@ -103,7 +120,7 @@ public class PostManager : MonoBehaviour {
     private void CreateCurrentBuffer()
     {
         currentPost=new RenderTexture(Screen.width,Screen.height,0,RenderTextureFormat.ARGB32);
-        depthPost.enableRandomWrite=true;
+        currentPost.enableRandomWrite=true;
         currentPost.Create();
     }
     private void CreateInitBuffer()
@@ -114,6 +131,7 @@ public class PostManager : MonoBehaviour {
     }
     private void CreateDepthBuffer()
     {
+        cam.depthTextureMode|=DepthTextureMode.Depth;
         depthPost=new RenderTexture(Screen.width,Screen.height,24);
         depthPost.enableRandomWrite=true;
         depthPost.Create();
@@ -126,7 +144,7 @@ public class PostManager : MonoBehaviour {
     private void OnRenderImage(RenderTexture src, RenderTexture dest) 
     {
         initPost=src;       
-        if(currentPost==null)
+        if(currentPost==null||agentList==null)
         {
             Graphics.Blit(initPost,dest);
             return;
@@ -134,7 +152,9 @@ public class PostManager : MonoBehaviour {
         Graphics.Blit(initPost,currentPost);
         for(int i=0;i<agentList.Count;i++)
         {
-            agentList[i].Trigger();
+            Graphics.Blit(agentList[i].Buf,currentPost);
+            if(agentList[i].Trigger!=null)
+                agentList[i].Trigger();
         }
         Graphics.Blit(currentPost,dest);
     }
