@@ -29,10 +29,10 @@ Shader "Hidden/RayMarching"
             {
                 float3 tolight=wpos-lightPos.xyz;
                 half3 ldir=-normalize(tolight);
-                float d=1-saturate(dot(tolight,tolight)*lightPos.w);
-                // float atten=tex2D(_LightTextureB0,d.rr).UNITY_ATTEN_CHANNEL;
-                // atten*=UnityDeferredComputeShadow(tolight,0,float2(0,0));
-                return d;
+                float d=dot(tolight,tolight)*lightPos.w;
+                float atten=tex2D(_LightTextureB0,d.rr).UNITY_ATTEN_CHANNEL;
+                atten*=UnityDeferredComputeShadow(tolight,0,float2(0,0));
+                return atten;
             }
 
             float4 GetWorldPositionFromDepthValue( float2 uv, float linearDepth ) 

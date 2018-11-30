@@ -425,8 +425,8 @@ MonoBehaviour:
   scatteringCoef: 0.0001
   scatteringColor: {r: 1, g: 0.78890985, b: 0.033018887, a: 0}
   RayMarchingCount: 64
-  RectWidth: 32
-  RectHeight: 32
+  RectWidth: 256
+  RectHeight: 256
   SpatialSigma: 1
   ColorSigma: 1
 --- !u!65 &1498843857

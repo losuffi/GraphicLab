@@ -88,12 +88,6 @@ public class VolumetricLighttingAgent : MonoBehaviour {
         epipolarOutput=new RenderTexture(epipolarSpaceSizeX,epipolarSpaceSizeY,0,RenderTextureFormat.ARGBHalf);
         epipolarOutput.enableRandomWrite=true;
         epipolarOutput.Create();
-        rectTransformTex=new RenderTexture(RectWidth,RectHeight,24,RenderTextureFormat.ARGBFloat);
-        rectTransformTex.enableRandomWrite=true;
-        rectTransformTex.Create();
-        secRectPanel=new RenderTexture(RectWidth,RectHeight,0,RenderTextureFormat.ARGBHalf);
-        secRectPanel.enableRandomWrite=true;
-        secRectPanel.Create();
         RectPanel=new RenderTexture(RectWidth,RectHeight,0,RenderTextureFormat.ARGBHalf);
         RectPanel.enableRandomWrite=true;
         RectPanel.Create();
@@ -110,22 +104,16 @@ public class VolumetricLighttingAgent : MonoBehaviour {
         {
             createEpipolarTexture();
         }
-        SamplesKernel.SetTexture(3,"TransformTex",rectTransformTex);
-        SamplesKernel.Dispatch(3,RectWidth/32,RectHeight/32,1);
         int csKernel=SamplesKernel.FindKernel("UpdateEpipolarTex");
         SamplesKernel.SetTexture(csKernel,"EpipolarTex",epipolarTex); 
-        SamplesKernel.SetFloat("LineDensity",epipolarLineDensity*8);
-        SamplesKernel.SetFloat("InitSampleCount",maxEpipolarLineInitPoint);
-        SamplesKernel.SetFloat("InterpolateSampleCount",maxEpipolarInterpolatePointEveryStage);
         CalcularLightPoint();
         SamplesKernel.SetVector("SourceCoord",lightSourceEpipolarCoord);
         SamplesKernel.SetTexture(csKernel,"DepthBuffer",PostManager.Instantiete.DepthPost);
-        SamplesKernel.SetTexture(csKernel,"TransformTex",rectTransformTex);
-        SamplesKernel.SetVector("RectTexSize",new Vector2(RectWidth,RectHeight));
+        SamplesKernel.SetVector("RectTexSize",new Vector4(RectWidth,RectHeight,1.0f/RectWidth,1.0f/RectHeight));
         SamplesKernel.SetVector("epipolarSize",new Vector2(epipolarSpaceSizeX,epipolarSpaceSizeY));
         SamplesKernel.SetVector("DepthBufferSize",new Vector2(PostManager.Instantiete.DepthPost.width,PostManager.Instantiete.DepthPost.height));
         SamplesKernel.SetFloat("DepthThreshold",SampleDepthThreshole/viewCamera.farClipPlane);
-        SamplesKernel.SetVector("EpipolarParams",new Vector4(EpipolarLineTexelCount,0,0,0));
+        SamplesKernel.SetVector("EpipolarParams",new Vector4(EpipolarLineTexelCount,maxEpipolarInterpolatePointEveryStage,0,0));
         SamplesKernel.SetVector("ScreenParams",new Vector4(Screen.width,Screen.height,1.0f/Screen.width,1.0f/Screen.height));
         SamplesKernel.Dispatch(csKernel,epipolarSpaceSizeX/32,epipolarSpaceSizeY/32,1);
         updateRayMarching();
@@ -191,20 +179,13 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     }
     #endregion
     #region RectTransform
-    private RenderTexture rectTransformTex;
-    private RenderTexture secRectPanel,RectPanel;
+    private RenderTexture RectPanel;
     private void updateTransformToRect()
     {
         SamplesKernel.SetVector("epipolarSize",new Vector2(epipolarSpaceSizeX,epipolarSpaceSizeY));
-        SamplesKernel.SetTexture(2,"temp",rectTransformTex);
-        SamplesKernel.SetTexture(2,"SecPlane",secRectPanel);
-        SamplesKernel.SetTexture(2,"samples",epipolarOutput);
-        SamplesKernel.Dispatch(2,RectWidth/32,RectHeight/32,1);
-        SamplesKernel.SetTexture(5,"temp4",secRectPanel);
-        SamplesKernel.SetTexture(5,"SecPlane",RectPanel);
-        SamplesKernel.SetFloat("sigmaS",SpatialSigma);
-        SamplesKernel.SetFloat("sigmaI",ColorSigma);
-        SamplesKernel.Dispatch(5,RectWidth/32,RectHeight/32,1);
+        SamplesKernel.SetTexture(3,"temp",epipolarOutput);
+        SamplesKernel.SetTexture(3,"SecPlane",RectPanel);
+        SamplesKernel.Dispatch(3,RectWidth/32,RectHeight/32,1);
     }
     #endregion
     
@@ -214,12 +195,12 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     {
         //Debug.Log(width+","+height);
         SamplesKernel.SetVector("epipolarSize",new Vector2(epipolarSpaceSizeX,epipolarSpaceSizeY));
-        SamplesKernel.SetTexture(4,"temp",RectPanel);
-        SamplesKernel.SetTexture(4,"opt",opt);
-        SamplesKernel.SetTexture(4,"samples",PostManager.Instantiete.InitPost);
+        SamplesKernel.SetTexture(2,"temp",RectPanel);
+        SamplesKernel.SetTexture(2,"opt",opt);
+        SamplesKernel.SetTexture(2,"samples",PostManager.Instantiete.InitPost);
         SamplesKernel.SetVector("sizef",new Vector2(1f/width,1f/height));
         SamplesKernel.SetVector("RectTexSize",new Vector2(RectWidth,RectHeight));
-        SamplesKernel.Dispatch(4,width/8,height/8,1);
+        SamplesKernel.Dispatch(2,width/8,height/8,1);
     }
     #endregion
     
