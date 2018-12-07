@@ -22,14 +22,14 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     [SerializeField]
     private float SampleDepthThreshole=10f;
     [SerializeField]
-    [Range(3,6)]
-    private int epipolarLineDensity;
+    [Range(64,1024)]
+    private int epipolarLineDensity=512;
     [SerializeField]
-    [Range(4,18)]
-    private int maxEpipolarLineInitPoint;
+    [Range(4,32)]
+    private int maxEpipolarLineInitPoint=8;
     [SerializeField]
-    [Range(2,10)]
-    private int maxEpipolarInterpolatePointEveryStage;
+    [Range(8,64)]
+    private int maxEpipolarInterpolatePointEveryStage=32;
     [SerializeField]
     private int EpipolarLineTexelCount=512;
 
@@ -77,7 +77,7 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     private int epipolarSpaceSizeY;
     private void createEpipolarTexture()
     {
-        epipolarSpaceSizeX=epipolarLineDensity*32;
+        epipolarSpaceSizeX=epipolarLineDensity;
         epipolarSpaceSizeY=maxEpipolarLineInitPoint*maxEpipolarInterpolatePointEveryStage;
         epipolarTex=new RenderTexture(epipolarSpaceSizeX,epipolarSpaceSizeY,24,RenderTextureFormat.ARGBFloat);
         epipolarTex.enableRandomWrite=true;
@@ -184,6 +184,7 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     {
         SamplesKernel.SetVector("epipolarSize",new Vector2(epipolarSpaceSizeX,epipolarSpaceSizeY));
         SamplesKernel.SetTexture(3,"temp",epipolarOutput);
+        SamplesKernel.SetTexture(3,"samples",epipolarTex);
         SamplesKernel.SetTexture(3,"SecPlane",RectPanel);
         SamplesKernel.Dispatch(3,RectWidth/32,RectHeight/32,1);
     }

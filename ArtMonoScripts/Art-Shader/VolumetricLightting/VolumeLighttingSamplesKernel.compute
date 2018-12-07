@@ -23,7 +23,7 @@ float2 BoundaryEpipolarPoint(half indexH)
 }
 float BoundaryEpipolarIndics(float2 exitP,half4 sectorFlags)
 {
-    float4 indics=float4(0,0.25,0.5,0.75)+ (0.5+exitP.xyxy*float4(0.5,-0.5,-0.5,0.5)/4);
+    float4 indics=float4(0,0.25,0.5,0.75)+ ((0.5+exitP.xyxy*float4(0.5,-0.5,-0.5,0.5))/4.0f);
     return dot(indics,sectorFlags);
 }
 float2 GetEntryPoint(float2 exitP)
@@ -32,7 +32,7 @@ float2 GetEntryPoint(float2 exitP)
     float DistToExitBoundary=length(RayDir);
     RayDir/=DistToExitBoundary;
     float4 IsCorrectIntersectionFlags=abs(RayDir.xyxy)>1e-5;
-    float4 DisToBoundaries=(float4(1,1,-1,-1)-SourceCoord.yxyx)/(RayDir.xyxy+(1-IsCorrectIntersectionFlags));
+    float4 DisToBoundaries=(float4(1,1,-1,-1)-SourceCoord.xyxy)/(RayDir.xyxy+(1-IsCorrectIntersectionFlags));
     IsCorrectIntersectionFlags= IsCorrectIntersectionFlags && (DisToBoundaries<(DistToExitBoundary-(1e-4)));
     DisToBoundaries=IsCorrectIntersectionFlags * DisToBoundaries +(1-IsCorrectIntersectionFlags)*float4(-10,-10,-10,-10);
     float FirstIntersecDist=0;
@@ -62,6 +62,8 @@ void UpdateEpipolarTex(uint2 id:SV_DispatchThreadID,uint2 tid:SV_GroupThreadID)
         uv=-1;
         flag=0;
     }
+
+    uv=(uv+1)/2;
     float d=DepthBuffer[uv*DepthBufferSize];
     cache[tid.x][tid.y]=d;
     GroupMemoryBarrierWithGroupSync();
@@ -121,6 +123,7 @@ inline half EpipolarSliceIndics(float2 entryP,float2 exitP,float2 P)
     float lenE=length(exitP-entryP);
     return lenP/lenE;
 }
+//EntryPoint 计算错误
 [numthreads(32,32,1)]
 void TransformPlane(int2 id:SV_DispatchThreadID)
 {
@@ -138,10 +141,12 @@ void TransformPlane(int2 id:SV_DispatchThreadID)
     float xRatio=inkX-xMin;
     float yRatio=inkY-yMin;
     half3 horiA=temp[int2(xMin,yMin)];
-    half3 horiB=temp[int2(xMin+1,yMin)];
+    int xnext=(xMin+2)>epipolarSize.x?0:xMin+1;
+    half3 horiB=temp[int2(xnext,yMin)];
     half3 horiC=temp[int2(xMin,yMin+1)];
-    half3 horiD=temp[int2(xMin+1,yMin+1)];
-    //SecPlane[id]=float4(1,0,0,1);
+    half3 horiD=temp[int2(xnext,yMin+1)];
+    //SecPlane[id]=float4(EpipolarSliceIndics(entryPoint,exitPoint,uv),0,0,1);
+    //SecPlane[id]=float4(temp[int2(xMin,yMin)].xyz,1);
     SecPlane[id]=float4(lerp(lerp(horiA,horiB,xRatio),lerp(horiC,horiD,xRatio),yRatio),1);
 }
 float2 sizef;

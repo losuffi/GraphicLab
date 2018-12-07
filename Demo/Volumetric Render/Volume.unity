@@ -417,9 +417,9 @@ MonoBehaviour:
   viewCamera: {fileID: 1457594609}
   AreaSize: {x: 10, y: 10, z: 10}
   SampleDepthThreshole: 10
-  epipolarLineDensity: 3
+  epipolarLineDensity: 512
   maxEpipolarLineInitPoint: 8
-  maxEpipolarInterpolatePointEveryStage: 8
+  maxEpipolarInterpolatePointEveryStage: 32
   EpipolarLineTexelCount: 100
   _PhaseG: 0.3
   scatteringCoef: 0.0001
