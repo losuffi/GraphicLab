@@ -4,7 +4,7 @@
 
 ## 1.FFT OCEAN
 
-![cc](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A7.gif)
+![cc](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A13.gif)
 
 ![c2](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A8.gif)
 
