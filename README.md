@@ -24,6 +24,10 @@
 
 ![c2](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A11.gif)
 
+- with toon lightting:
+
+  ![](https://github.com/losuffi/GraphicLab/blob/master/READMEPIC/A14.gif)
+
 Path:Assets/Demo/AnimostropicHair/Hair.unity
 
 ## 3.Volume Light (Epipolar Sample)
