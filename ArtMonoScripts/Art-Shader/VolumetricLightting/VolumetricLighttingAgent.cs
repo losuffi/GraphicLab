@@ -18,6 +18,16 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     private RenderTexture mask;
     private Matrix4x4 clipMatrix;
 
+    [Header("Shadow Property")]
+    [SerializeField]
+    private Vector2 shadowSize;
+    [SerializeField]
+    private float shadowFar;
+    [SerializeField]
+    private Shader shadowDepthShader;
+    [SerializeField]
+    private LayerMask layer;
+
     [Header("Calcular Property")]
     [SerializeField]
     private float SampleDepthThreshole=10f;
@@ -36,6 +46,8 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     [Header("Light Coef")]
     [SerializeField]
     private float _PhaseG;
+    [SerializeField]
+    private float Extinction;
     [SerializeField]
     private float scatteringCoef;
     [SerializeField]
@@ -154,28 +166,26 @@ public class VolumetricLighttingAgent : MonoBehaviour {
     private RenderTexture RayMarchingTex;
     private void updateRayMarching()
     {
-        if(RayMarchingMat==null)
+        if(shadowMap==null)
         {
-            RayMarchingMat=new Material(RayMarchingShader);
+            UpdateShadowMap();
         }
-        _CamToWorldParams=new Vector4(
-            viewCamera.farClipPlane,
-            viewCamera.nearClipPlane,
-            viewCamera.projectionMatrix.m11,
-            (Screen.width*1.0f/Screen.height)
-        );
-        RayMarchingMat.SetTexture("msg",epipolarTex);
-        RayMarchingMat.SetInt("SampleCount",RayMarchingCount);
-        RayMarchingMat.SetVector("lightPos",lightSource.v4Pos);
-        RayMarchingMat.SetColor("light",scatteringColor);
-        RayMarchingMat.SetFloat("scatteringCoef",scatteringCoef);
-        RayMarchingMat.SetFloat("_G",_PhaseG);
-        RayMarchingMat.SetVector("CamParams",_CamToWorldParams);
-        RayMarchingMat.SetVector("WorldCamPos",viewCamera.transform.position);
-        RayMarchingMat.SetMatrix("CamToWorld",viewCamera.cameraToWorldMatrix);
-        Graphics.Blit(epipolarTex,RayMarchingTex,RayMarchingMat);
-        
-        
+        int csKernel=SamplesKernel.FindKernel("RayMarching");
+        SamplesKernel.SetTexture(csKernel,"input",epipolarTex);
+        SamplesKernel.SetTexture(csKernel,"RaymarchingRes",RayMarchingTex);
+        SamplesKernel.SetVector("shadowProjParams",shadowProjectionParams);
+        SamplesKernel.SetVector("CamParams",_CamToWorldParams);
+        SamplesKernel.SetVector("DParams",DParams);
+        SamplesKernel.SetVector("WorldCamPos",viewCamera.transform.position);
+        SamplesKernel.SetMatrix("CamToWorld",viewCamera.cameraToWorldMatrix);
+        SamplesKernel.SetInt("SampleCount",RayMarchingCount);
+        SamplesKernel.SetVector("lightPos",lightSource.v4Pos);
+        SamplesKernel.SetVector("mediaParams",new Vector4(scatteringCoef,Extinction,_PhaseG,0));
+        SamplesKernel.SetVector("scatterColor",scatteringColor);
+        SamplesKernel.SetMatrix("shadowMat",world2ShadowProjection);
+        SamplesKernel.SetVector("DepthBufferSize",shadowSize);
+        SamplesKernel.SetTexture(csKernel,"DepthBuffer",shadowMap);
+        SamplesKernel.Dispatch(csKernel,epipolarSpaceSizeX/32,epipolarSpaceSizeY/32,1);       
     }
     #endregion
     #region RectTransform
@@ -204,12 +214,49 @@ public class VolumetricLighttingAgent : MonoBehaviour {
         SamplesKernel.Dispatch(2,width/8,height/8,1);
     }
     #endregion
-    
-    
-    private void Update() {
-        updateEpipolarTexture();
-    } 
+    #region Shadow
+    private RenderTexture shadowMap;
+    private Camera shadowMapCamera;
+    private Matrix4x4 world2ShadowProjection;
+    private Vector4 shadowProjectionParams,DParams;
+    private void UpdateShadowMap()
+    {
+        if(shadowMap==null)
+        {
+            shadowMap=new RenderTexture(Mathf.FloorToInt(shadowSize.x),Mathf.FloorToInt(shadowSize.y),24,RenderTextureFormat.RFloat);
+            shadowMap.enableRandomWrite=true;
+            shadowMap.filterMode=FilterMode.Point;
+            shadowMap.wrapMode=TextureWrapMode.Clamp;
+        }
+        if(shadowMapCamera==null)
+        {
+            GameObject go=new GameObject("Depth Cam");
+            shadowMapCamera= go.AddComponent<Camera>();
+            go.hideFlags=HideFlags.HideAndDontSave;
+            shadowMapCamera.enabled=false;
+            shadowMapCamera.clearFlags=CameraClearFlags.SolidColor;
+        }
+        shadowMapCamera.cullingMask=layer.value;
+        shadowMapCamera.transform.position=lightSource.transform.position;
+        shadowMapCamera.transform.rotation=lightSource.transform.rotation;
+        shadowMapCamera.orthographic=false;
+        shadowMapCamera.nearClipPlane=0.01f;
+        shadowMapCamera.farClipPlane=shadowFar;
+        shadowMapCamera.fieldOfView=lightSource.angles;
+        shadowMapCamera.aspect=shadowSize.x/shadowSize.y;
+        shadowMapCamera.renderingPath=RenderingPath.Forward;
+        shadowMapCamera.targetTexture=shadowMap;
+        shadowMapCamera.backgroundColor=Color.white;
+        world2ShadowProjection=shadowMapCamera.projectionMatrix*shadowMapCamera.worldToCameraMatrix;
+        shadowProjectionParams=new Vector4(shadowMapCamera.projectionMatrix.m32,shadowMapCamera.nearClipPlane,shadowMapCamera.farClipPlane,1.0f/shadowMapCamera.farClipPlane);
+        shadowMapCamera.RenderWithShader(shadowDepthShader,"RenderType");
+    }
+    #endregion    
     private void OnWillRenderObject() {
+        DParams=new Vector4(-1+viewCamera.farClipPlane/viewCamera.nearClipPlane,1,(-1+viewCamera.farClipPlane/viewCamera.nearClipPlane)/viewCamera.farClipPlane,1/viewCamera.farClipPlane);
+        _CamToWorldParams=new Vector4(viewCamera.nearClipPlane,viewCamera.farClipPlane-viewCamera.nearClipPlane,viewCamera.projectionMatrix.m11,viewCamera.aspect);
+        updateEpipolarTexture();
+        UpdateShadowMap();
         debug.sharedMaterial.SetTexture("_MainTex",RectPanel);
     }
 }

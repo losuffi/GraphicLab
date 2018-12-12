@@ -9,6 +9,8 @@ public class VolumetricLightSource : MonoBehaviour {
     private Light lightobj;
     [SerializeField]
     public float range;
+    [SerializeField]
+    public float angles;
     public Vector4 v4Pos
     {
         get

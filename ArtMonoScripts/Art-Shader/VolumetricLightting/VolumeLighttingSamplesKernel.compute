@@ -2,14 +2,21 @@
 #pragma kernel LerpWork
 #pragma kernel ResPlane
 #pragma kernel TransformPlane
+#pragma kernel RayMarching
+#define PI 3.141592653
+#define PI4 12.56637061
 RWTexture2D<float4> EpipolarTex;
 float DepthThreshold;
 float2 SourceCoord;
 float4 ScreenParams;
-float4 EpipolartParmas;
+float4 EpipolarParams;
+float4 CamParams;
+float4 lightPos,WorldCamPos;
+float4x4 CamToWorld;
 Texture2D<float> DepthBuffer;
 float2 DepthBufferSize;
 float4 RectTexSize;
+float4 mediaParams;
 float2 epipolarSize;
 float2 BoundaryEpipolarPoint(half indexH)
 {
@@ -45,7 +52,7 @@ float2 GetEntryPoint(float2 exitP)
 float2 ReLocatedExitPoint(float2 exitP,float2 entryP)
 {
     float eSliceScreenLen=length((exitP-entryP)*ScreenParams.xy/2);
-    return entryP+(exitP-entryP)*max(EpipolartParmas.x/eSliceScreenLen,1);
+    return entryP+(exitP-entryP)*max(EpipolarParams.x/eSliceScreenLen,1);
 }
 groupshared half cache[32][32];
 [numthreads(32,32,1)]
@@ -56,7 +63,7 @@ void UpdateEpipolarTex(uint2 id:SV_DispatchThreadID,uint2 tid:SV_GroupThreadID)
     ExitPoint=ReLocatedExitPoint(ExitPoint,EntryPoint);
     float2 uv=lerp(EntryPoint,ExitPoint,saturate(id.y/epipolarSize.y) );
 
-    half flag=1-step(0.1f,(id.y%EpipolartParmas.y)*1.0f);
+    half flag=1-step(0.1f,(id.y%EpipolarParams.y)*1.0f);
     if(abs(uv.x)>(1+1e-4)||abs(uv.y)>(1+1e-4))
     {
         uv=-1;
@@ -123,7 +130,16 @@ inline half EpipolarSliceIndics(float2 entryP,float2 exitP,float2 P)
     float lenE=length(exitP-entryP);
     return lenP/lenE;
 }
-//EntryPoint 计算错误
+inline float4 GetWorldPositionFromDepthValue( float2 uv, float linearDepth ) 
+{
+    float camPosZ = CamParams.x + CamParams.y* linearDepth;
+    float height = 2 * camPosZ / CamParams.z;
+    float width = CamParams.w * height;
+    float camPosX = width * uv.x - width / 2;
+    float camPosY = height * uv.y - height / 2;
+    float4 camPos = float4(camPosX, camPosY, -camPosZ, 1.0);
+    return mul(CamToWorld, camPos);
+}
 [numthreads(32,32,1)]
 void TransformPlane(int2 id:SV_DispatchThreadID)
 {
@@ -168,4 +184,61 @@ void ResPlane(int2 id:SV_DispatchThreadID)
     half3 horiB=lerp(temp[lposC].xyz,temp[lposD].xyz,u_ratio);
     //opt[id]=float4(lerp(horiA,horiB,v_ratio),1);
     opt[id]=float4(samples[id].xyz+lerp(horiA,horiB,v_ratio),1);
+}
+RWTexture2D<float4> RaymarchingRes;
+float4x4 shadowMat;
+float4 shadowProjParams,DParams;
+int SampleCount;
+float4 scatterColor;
+half GetAtten(float3 pos)
+{
+    float4 wpos=float4(pos,1);
+    float4 spos=mul(shadowMat,wpos);
+    spos.xyz/=spos.w;
+    float atten=(spos.x>-1)*(spos.x<1)*(spos.y>-1)*(spos.y<1)*(spos.z<1)*(spos.z>-1);
+    float z=DepthBuffer[(spos.xy*0.5+0.5)*DepthBufferSize].r;
+    float d=shadowProjParams.z*z;
+    atten*=(d>spos.w);
+    //atten*=(1/spos.w);
+    return atten;
+}
+float MieScattering(float cosTheta)
+{
+    float G2=mediaParams.z*mediaParams.z;
+    return(1-G2)/(PI4*pow(abs(1+G2+2*mediaParams.z*cosTheta),1.5));
+}
+[numthreads(32,32,1)]
+void RayMarching(uint2 id:SV_DispatchThreadID)
+{
+    float4 msg=input[id];
+    if(1-step(0.1f,msg.z))
+        return;
+    float d=1/(DParams.x*msg.w+DParams.y);
+    float3 wpos=GetWorldPositionFromDepthValue(msg.xy,d).xyz;
+    float3 st=(wpos-WorldCamPos.xyz)/SampleCount;
+    float3 currentPos=WorldCamPos.xyz;
+    float len=length(st);
+    float extinction=0;
+    float3 res=0;
+    [loop]
+    for(int i=0;i<SampleCount;++i)
+    {
+        currentPos =WorldCamPos.xyz+i*st;
+        float density=1;// prepare for noise 
+        float scattering=mediaParams.x*len*density;
+        extinction+=mediaParams.y*len*density;
+
+
+        float3 tolight=lightPos.xyz-currentPos;
+        float Costheta=dot(normalize(st),tolight);
+
+        float3 il= scatterColor.xyz*GetAtten(currentPos);
+        il=il*scattering*exp(-extinction);
+
+        il*=MieScattering(Costheta);
+
+        res+=il;
+    }
+    
+    RaymarchingRes[id]=float4(res,1);
 }
