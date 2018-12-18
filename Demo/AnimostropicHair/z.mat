@@ -48,15 +48,15 @@ Material:
     - _ColPow: 1
     - _Cull: 2
     - _Cutoff: 1
-    - _Diffstrength: 1
+    - _Diffstrength: 0
     - _DstFactor: 0
     - _GlossMapScale: 1
     - _GlossyReflections: 1
     - _ShiftScale: 0.5
-    - _Specstrength: 1
+    - _Specstrength: 0
     - _SpecularHighlights: 1
     - _SrcFactor: 1
-    - _Stanstrength: 0
+    - _Stanstrength: 1
     - _TessellationScale: 8
     - _WireExp: 2.99
     - _ZWrite: 1
@@ -66,7 +66,7 @@ Material:
     - _AnisotropicDiffColor: {r: 1, g: 1, b: 1, a: 1}
     - _AnisotropicSpecularColor: {r: 0.5395603, g: 0.7064643, b: 0.9150943, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _EmissionCol: {r: 0, g: 0, b: 0, a: 1}
+    - _EmissionCol: {r: 1, g: 1, b: 1, a: 1}
     - _ShadowCol: {r: 0, g: 0, b: 0, a: 1}
     - _rimParams: {r: 0, g: 1, b: 0.2, a: 0}
     - _specColor: {r: 1, g: 1, b: 1, a: 1}

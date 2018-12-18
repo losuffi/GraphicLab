@@ -9,6 +9,6 @@ public class RotationUpdate : MonoBehaviour {
 	[SerializeField]
 	private Vector3 Axis=Vector3.up;
 	void Update () {
-		transform.rotation*=Quaternion.AngleAxis(rotationSpeed*Time.deltaTime,Axis);
+		transform.rotation*=Quaternion.AngleAxis(rotationSpeed*Time.deltaTime*0.98f,Axis);
 	}
 }
