@@ -1,0 +1,79 @@
+#pragma kernel OpticalDepthLUTGenerator
+#define PI 3.141592653
+#define PI2 6.283185306
+#define PIHalf 1.5707963265
+
+#define NUM_INTEGRATION_STEPS 20
+
+float fReferenceParticleRadius;
+uint4 ui4OpticalDepthLUTSIZE;
+RWTexture3D<float> OpticalDepthLUT; 
+
+inline uint4 C3ToC4(uint3 coord,uint4 size) 
+{
+    uint4 res;
+    res.xy=coord.xy;
+    res.z=coord.z / size.w;
+    res.w=coord.z % size.w;
+    return res;
+}
+inline int GetRaySphereIntersection(float3 f3ro, float3 f3rd, float3 f3center, inout float2 f2RayIsecs)
+{
+    float3 f3BiDir= f3ro - f3center;
+    float A = dot(f3rd,f3rd);
+    float B = dot(f3BiDir,f3rd) * 2;
+    float C = dot(f3BiDir,f3BiDir) - fReferenceParticleRadius * fReferenceParticleRadius;
+    float D = B * B - 4 * A * C;
+
+    if(D < 0)
+    {
+        return 0;
+    }
+    else
+    {
+        D = sqrt(D);
+        f2RayIsecs = float2(-B - D , -B + D);
+        return 1;
+    }
+}
+inline void SphereParamsToDescartesParams(float4 f4sphereCoord,inout float3 f3Pos,inout float3 f3Dir)
+{
+    f3Pos.y = cos(f4sphereCoord.y);
+    float fBiAxis = sin(f4sphereCoord.y);
+    f3Pos.x = fBiAxis * cos(f4sphereCoord.x);
+    f3Pos.z = fBiAxis * sin(f4sphereCoord.x);
+    f3Pos.xyz *= fReferenceParticleRadius;
+
+    f3Dir.z = cos(f4sphereCoord.w);
+    fBiAxis = sin(f4sphereCoord.w);
+    f3Dir.x = fBiAxis * cos(f4sphereCoord.z);
+    f3Dir.y = fBiAxis * sin(f4sphereCoord.z);
+}
+
+float ComputeDensity(float pos)
+{
+    return 0;
+}
+
+
+[numthreads(1,1,1)]
+void OpticalDepthLUTGenerator(uint3 ui3id:SV_GROUPTHREADID)
+{
+    uint4 ui4coord = C3ToC4(ui3id,ui4OpticalDepthLUTSIZE);
+    float4 f4stepAngle = float4(PI2,PI,PI2,PIHalf) / ui4OpticalDepthLUTSIZE;
+    float4 f4SphereFieldCoord = f4stepAngle * ui4coord;
+    float3 f3StartPos,f3RayDir;
+    SphereParamsToDescartesParams(f4SphereFieldCoord, f3StartPos, f3RayDir);
+    float2 f2RayIsecs;
+    GetRaySphereIntersection(f3StartPos+1e-4, f3RayDir, 0, f2RayIsecs);
+    float3 f3EndPos = f3StartPos + f2RayIsecs.y * f3RayDir;
+    float fNumSteps = NUM_INTEGRATION_STEPS;
+    float3 f3Step = (f3EndPos - f3StartPos) / fNumSteps;
+    float fTotalDensity = 0;
+    for(float fStepNum = 0.5; fStepNum < fNumSteps; ++ fStepNum)
+    {
+        float3 f3CurrPos = f3StartPos + f3Step * fStepNum;
+        fTotalDensity += ComputeDensity(f3CurrPos);
+    }
+    OpticalDepthLUT[ui3id] = fTotalDensity / fNumSteps;
+}
