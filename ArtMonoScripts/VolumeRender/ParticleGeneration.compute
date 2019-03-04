@@ -8,7 +8,13 @@
 float fReferenceParticleRadius;
 uint4 ui4OpticalDepthLUTSIZE;
 RWTexture3D<float> OpticalDepthLUT; 
-
+Texture2D<float2> NoiseMap;
+SamplerState sampler_NoiseMap
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
 inline uint4 C3ToC4(uint3 coord,uint4 size) 
 {
     uint4 res;
@@ -50,9 +56,49 @@ inline void SphereParamsToDescartesParams(float4 f4sphereCoord,inout float3 f3Po
     f3Dir.y = fBiAxis * sin(f4sphereCoord.z);
 }
 
-float ComputeDensity(float pos)
+float SampleNoise(in float3 f3Pos)
 {
-    return 0;
+    float3 f3P = floor(f3Pos);
+    float3 f3F = frac(f3Pos);
+    float2 uv = float2(f3P.xy+normalize(float2(5.4,19.0))*0.1);
+    f3F = f3F * f3F * (3.0 - 2.0 * f3F);
+    float2 f2res = 
+    lerp(
+    lerp(NoiseMap.SampleLevel(sampler_NoiseMap,uv,0),NoiseMap.SampleLevel(sampler_NoiseMap,uv+float2(0,0.1),0),f3F.x),
+    lerp(NoiseMap.SampleLevel(sampler_NoiseMap,uv+float2(0.1,0),0),NoiseMap.SampleLevel(sampler_NoiseMap,uv+float2(0.1,0.1),0),f3F.x),
+    f3F.y);   
+    return lerp(f2res.x,f2res.y,f3F.z);
+}
+
+float GetRandomDensity(in float f3Pos, float fStartFreq, int iNumOctaves = 3, float fAmplitudeScale = 0.6)
+{
+    float fNoise = 0;
+    float fAmplitude = 1;
+    float fFreq = fStartFreq;
+    for (int i = 0; i < iNumOctaves; ++i)
+    {
+        fNoise += (SampleNoise(f3Pos * fFreq) - 0.5) * fAmplitude;
+        fFreq *= 1.7;
+        fAmplitude *= fAmplitudeScale;
+    }
+    return fNoise;
+}
+
+float GetMetabolDenstiy(in float r)
+{
+    float r2 = r * r;
+    float r4 = r2 * r2;
+    float r6 = r4 * r2;
+    return saturate(-4.0 / 9.0 * r6 + 17.0 / 9.0 * r4 - 22.0 / 9.0 *r2 + 1);
+}
+
+float ComputeDensity(float3 f3CurrPos)
+{
+    float fDistToCenter = length(f3CurrPos);
+    float fMetabolDensity = GetMetabolDenstiy(fDistToCenter);
+    float fDensity = 0;
+    fDensity = saturate(1.0 * saturate(fMetabolDensity) + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos + 0.5, 0.15, 4, 0.7));
+    return fDensity;
 }
 
 
