@@ -6,8 +6,8 @@
 #define NUM_INTEGRATION_STEPS 20
 
 float fReferenceParticleRadius;
-uint4 ui4OpticalDepthLUTSIZE;
-RWTexture3D<float> OpticalDepthLUT; 
+float4 f4LUTSize;
+RWTexture2D<float4> OpticalDepthLUT; 
 Texture2D<float2> NoiseMap;
 SamplerState sampler_NoiseMap
 {
@@ -21,6 +21,15 @@ inline uint4 C3ToC4(uint3 coord,uint4 size)
     res.xy=coord.xy;
     res.z=coord.z / size.w;
     res.w=coord.z % size.w;
+    return res;
+}
+inline uint4 C2ToC4(uint2 coord, uint4 size)
+{
+    uint4 res;
+    res.x = coord.x / size.y;
+    res.y = coord.x % size.y;
+    res.z = coord.y / size.w;
+    res.w = coord.y % size.w;
     return res;
 }
 inline int GetRaySphereIntersection(float3 f3ro, float3 f3rd, float3 f3center, inout float2 f2RayIsecs)
@@ -98,15 +107,15 @@ float ComputeDensity(float3 f3CurrPos)
     float fMetabolDensity = GetMetabolDenstiy(fDistToCenter);
     float fDensity = 0;
     fDensity = saturate(1.0 * saturate(fMetabolDensity) + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos + 0.5, 0.15, 4, 0.7));
-    return fDensity;
+    return fDistToCenter;
 }
 
 
-[numthreads(1,1,1)]
-void OpticalDepthLUTGenerator(uint3 ui3id:SV_GROUPTHREADID)
+[numthreads(32,32,1)]
+void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 {
-    uint4 ui4coord = C3ToC4(ui3id,ui4OpticalDepthLUTSIZE);
-    float4 f4stepAngle = float4(PI2,PI,PI2,PIHalf) / ui4OpticalDepthLUTSIZE;
+    uint4 ui4coord = C2ToC4(ui2id,floor(f4LUTSize));
+    float4 f4stepAngle = float4(PI2,PI,PI2,PIHalf) / f4LUTSize;
     float4 f4SphereFieldCoord = f4stepAngle * ui4coord;
     float3 f3StartPos,f3RayDir;
     SphereParamsToDescartesParams(f4SphereFieldCoord, f3StartPos, f3RayDir);
@@ -121,5 +130,6 @@ void OpticalDepthLUTGenerator(uint3 ui3id:SV_GROUPTHREADID)
         float3 f3CurrPos = f3StartPos + f3Step * fStepNum;
         fTotalDensity += ComputeDensity(f3CurrPos);
     }
-    OpticalDepthLUT[ui3id] = fTotalDensity / fNumSteps;
+    OpticalDepthLUT[ui2id] = float4((fTotalDensity / fNumSteps),0,0,1);
+    //OpticalDepthLUT[ui2id] = f4SphereFieldCoord.y/PI;
 }

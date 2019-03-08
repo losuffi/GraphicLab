@@ -234,7 +234,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   referenceParticle:
     standardScale: 1
-  GenerationCS: {fileID: 0}
+  GenerationCS: {fileID: 7200000, guid: 1416dc20200f0664c95a8c3fad0e0949, type: 3}
+  LUTSize: {x: 32, y: 16, z: 32, w: 16}
+  noiseSource: {fileID: 2800000, guid: bbff27694d1a6c646a53c06a1ac7688b, type: 3}
+  ReferenceParticleRadius: 200
 --- !u!4 &1350519307
 Transform:
   m_ObjectHideFlags: 0
