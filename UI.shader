@@ -22,9 +22,9 @@ Shader "UI/DefaultTest"
     {
         Tags
         {
-            "Queue"="Transparent"
+            "Queue"="Geometry"
             "IgnoreProjector"="True"
-            "RenderType"="Transparent"
+            "RenderType"="Opacity"
             "PreviewType"="Plane"
             "CanUseSpriteAtlas"="True"
         }
@@ -40,7 +40,7 @@ Shader "UI/DefaultTest"
 
         Cull Off
         Lighting Off
-        ZWrite Off
+        ZWrite On
         ZTest [unity_GUIZTestMode]
         Blend SrcAlpha OneMinusSrcAlpha
         ColorMask [_ColorMask]
@@ -52,14 +52,14 @@ Shader "UI/DefaultTest"
         CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma target 2.0
+            #pragma target 3.0
 
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
 
             #pragma multi_compile __ UNITY_UI_CLIP_RECT
             #pragma multi_compile __ UNITY_UI_ALPHACLIP
-
+            sampler2D _CameraDepthTexture;
             struct appdata_t
             {
                 float4 vertex   : POSITION;
@@ -74,6 +74,7 @@ Shader "UI/DefaultTest"
                 fixed4 color    : COLOR;
                 float2 texcoord  : TEXCOORD0;
                 float4 worldPosition : TEXCOORD1;
+                float4 screenUV:TEXCOORD2;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -89,10 +90,11 @@ Shader "UI/DefaultTest"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
                 OUT.worldPosition = v.vertex;
+                //float wz= mul(unity_ObjectToWorld,OUT.worldPosition).z;
                 OUT.vertex = UnityObjectToClipPos(OUT.worldPosition);
-
+                OUT.screenUV=ComputeScreenPos(OUT.vertex);
                 OUT.texcoord = TRANSFORM_TEX(v.texcoord, _MainTex);
-
+                //OUT.worldPosition.z=wz;
                 OUT.color = v.color * _Color;
                 return OUT;
             }
@@ -109,6 +111,9 @@ Shader "UI/DefaultTest"
                 clip (color.a - 0.001);
                 #endif
 
+                float depth=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, IN.screenUV.xy));
+                //clip(depth-IN.screenUV.w);
+                color=float4(step(1.1, IN.screenUV.w),0,0,1);
                 return color;
             }
         ENDCG

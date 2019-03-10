@@ -1,4 +1,5 @@
 #pragma kernel OpticalDepthLUTGenerator
+#pragma kernel SingleScaterringLUTGenerator
 #define PI 3.141592653
 #define PI2 6.283185306
 #define PIHalf 1.5707963265
@@ -6,7 +7,7 @@
 #define NUM_INTEGRATION_STEPS 20
 
 float fReferenceParticleRadius;
-float4 f4LUTSize;
+float4 f4LUTSize, f4SingleSctrLUTSize;
 RWTexture2D<float4> OpticalDepthLUT; 
 Texture2D<float2> NoiseMap;
 SamplerState sampler_NoiseMap
@@ -132,4 +133,9 @@ void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
     }
     OpticalDepthLUT[ui2id] = float4((fTotalDensity / fNumSteps),0,0,1);
     //OpticalDepthLUT[ui2id] = f4SphereFieldCoord.y/PI;
+}
+[numthreads(32,32,1)]
+void SingleScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
+{
+    uint4 ui4coord = C2ToC4(ui2id, floor(f4SingleSctrLUTSize));
 }
