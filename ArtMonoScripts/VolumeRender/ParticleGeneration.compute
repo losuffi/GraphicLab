@@ -5,10 +5,12 @@
 #define PIHalf 1.5707963265
 
 #define NUM_INTEGRATION_STEPS 20
-
+float fScatteringCoeff;
+float fAttenuationCoeff;
 float fReferenceParticleRadius;
 float4 f4LUTSize, f4SingleSctrLUTSize;
 RWTexture2D<float4> OpticalDepthLUT; 
+RWTexture2D<float4> SingleSctrLUT; 
 Texture2D<float2> NoiseMap;
 SamplerState sampler_NoiseMap
 {
@@ -111,6 +113,33 @@ float ComputeDensity(float3 f3CurrPos)
     return fDistToCenter;
 }
 
+inline void ConstructTransMat(float3 f3aDir,float3 f3inlineBidir, out float3x3 f3x3mat)
+{
+    float3 f3z = normalize(f3aDir);
+    float3 f3y = normalize(cross(f3aDir,f3inlineBidir));
+    float3 f3x = normalize(cross(f3y,f3z));
+    f3x3mat = float3x3(f3z,f3y,f3x);
+}
+
+inline void SctrLUTToWorldParams(float4 f4Coord, out float3 f3StartPosUSSpace, out float3 f3ViewDirUSSpace,out float3 f3LightDirUSSpace)
+{
+    f3LightDirUSSpace = float3(0,0,1);
+    f3StartPosUSSpace = float3(0,0,0);
+    sincos(f4Coord.x,f3StartPosUSSpace.x,f3StartPosUSSpace.z);
+    f3StartPosUSSpace *= f4Coord.w;                 //Scale start pos according to the distance from center
+
+    float3 f3OriginDir = float3(0,0,0);
+    float t = 0;
+    sincos(f4Coord.z,t,f3OriginDir.y);
+    sincos(f4Coord.y,f3OriginDir.x,f3OriginDir.z);
+    f3OriginDir.xz *= t;
+    // float3x3 f3x3mat;
+    // ConstructTransMat(f3LightDirUSSpace, f3StartPosUSSpace, f3x3mat);
+
+    //f3ViewDirUSSpace = mul(f3x3mat, f3OriginDir);
+    f3ViewDirUSSpace = f3OriginDir;
+}
+
 
 [numthreads(32,32,1)]
 void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
@@ -138,4 +167,29 @@ void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 void SingleScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 {
     uint4 ui4coord = C2ToC4(ui2id, floor(f4SingleSctrLUTSize));
+    float3 f3stepAngle = float3(PI,PI2,PI) / f4SingleSctrLUTSize.xyz;
+    float3 f3SphereCoord = f3stepAngle * ui4coord.xyz;
+    float3 f3EntryPoint , f3ViewDirUSSpace , f3LightDirUSSpace;
+    float4 f4Coord = float4(f3SphereCoord,1);
+    SctrLUTToWorldParams(f4Coord,f3EntryPoint,f3ViewDirUSSpace,f3LightDirUSSpace);
+
+    float2 f2RayIsecs;
+    GetRaySphereIntersection(f3EntryPoint,f3ViewDirUSSpace, 0,f2RayIsecs);
+    float3 f3EndPos = f3EntryPoint + f3ViewDirUSSpace * f2RayIsecs.y;
+
+    float fNumSteps = NUM_INTEGRATION_STEPS;
+    float3 f3Step = (f3EndPos - f3EntryPoint) / fNumSteps;
+    float fStepLen = length(f3Step);
+    float fCloudMassToCamera = 0;
+    float fInscattering = 0;
+    for(float fStepNum = 0.5;fStepNum < fNumSteps; ++ fStepNum)
+    {
+        float3 f3CurrPos = f3EntryPoint + f3Step * fStepNum;
+        GetRaySphereIntersection(f3CurrPos, f3LightDirUSSpace, 0,f2RayIsecs);
+        float fCloudMassToLight = f2RayIsecs.x * fReferenceParticleRadius;
+        float fAttenuation = exp(-fAttenuationCoeff * (fCloudMassToLight + fCloudMassToCamera) );
+        fInscattering +=fAttenuation * fScatteringCoeff;
+        fCloudMassToCamera += fStepLen * fReferenceParticleRadius;
+    }
+    SingleSctrLUT[ui2id]=float4(fInscattering * fStepLen * fReferenceParticleRadius,0,0,1);
 }
