@@ -16,15 +16,26 @@ public class ParticleGeneration : MonoBehaviour
     private Texture2D noiseSource;
     [SerializeField]
     private float ReferenceParticleRadius;
+    [SerializeField]
+    private float AttenuationCoeff;
+    [SerializeField]
+    private float ScatteringCoeff;
+    [SerializeField]
+    private int ScatteringCount;
+
 
     private RenderTexture OpticalDepthLUTTemp;
     private RenderTexture SingleScatteringLUTTemp;
+    private RenderTexture MultScatteringLUTTemp;
+
+    private RenderTexture[] SctrTemp;
+
     public RenderTexture Generation()
     {
         OpticalDepthLUTTemp = new RenderTexture(Mathf.FloorToInt(LUTSize.x * LUTSize.y), Mathf.FloorToInt(LUTSize.z * LUTSize.w), 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
         OpticalDepthLUTTemp.enableRandomWrite = true;
         OpticalDepthLUTTemp.Create();
-        
+
         //OpticalDepthLUT.enableRandomWrite = true;
         transform.localScale *= referenceParticle.standardScale;
         int kernel = GenerationCS.FindKernel("OpticalDepthLUTGenerator");
@@ -38,7 +49,39 @@ public class ParticleGeneration : MonoBehaviour
         SingleScatteringLUTTemp = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
         SingleScatteringLUTTemp.enableRandomWrite = true;
         SingleScatteringLUTTemp.Create();
-        return OpticalDepthLUTTemp;
+        //Mult Scattering 
+        MultScatteringLUTTemp = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        MultScatteringLUTTemp.enableRandomWrite = true;
+        MultScatteringLUTTemp.Create();
+
+        SctrTemp = new RenderTexture[2];
+        SctrTemp[0] = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        SctrTemp[0].enableRandomWrite = true;
+        SctrTemp[0].Create();
+
+        SctrTemp[1] = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        SctrTemp[1].enableRandomWrite = true;
+        SctrTemp[1].Create();
+
+        kernel = GenerationCS.FindKernel("SingleScaterringLUTGenerator");
+        GenerationCS.SetTexture(kernel, "SingleSctrLUT", SingleScatteringLUTTemp);
+        GenerationCS.SetTexture(kernel, "IterateLUT", SctrTemp[0]);
+        GenerationCS.SetVector("f4SingleSctrLUTSize", SingleScartteringLUTSize);
+        GenerationCS.SetFloat("fScatteringCoeff", ScatteringCoeff);
+        GenerationCS.SetFloat("fAttenuationCoeff", AttenuationCoeff);
+        GenerationCS.Dispatch(kernel, Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y) / 32, Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w) / 32, 1);
+
+        for (int i = 0; i < ScatteringCoeff; i++)
+        {
+            kernel = GenerationCS.FindKernel("MultiScaterringLUTGenerator");
+            GenerationCS.SetTexture(kernel, "SingleSctrInput", SctrTemp[i % 2]);
+            GenerationCS.SetTexture(kernel, "IterateLUT", SctrTemp[(i + 1) % 2]);
+            GenerationCS.SetTexture(kernel, "MultiSctrLUT", MultScatteringLUTTemp);
+            GenerationCS.SetBool("bIsFirstSctr", i == 0);
+            GenerationCS.Dispatch(kernel, Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y) / 32, Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w) / 32, 1);
+        }
+        
+        return MultScatteringLUTTemp;
     }
     public void SaveGeneration()
     {
@@ -49,6 +92,15 @@ public class ParticleGeneration : MonoBehaviour
         tex.ReadPixels(new Rect(0, 0, OpticalDepthLUTTemp.width, OpticalDepthLUTTemp.height), 0, 0);
         tex.Apply();
         System.IO.File.WriteAllBytes(Application.dataPath + "/OpticalDepthPNG.png", tex.EncodeToPNG());
+
+        if(MultScatteringLUTTemp == null)
+            return;
+        var tex2 = new Texture2D(MultScatteringLUTTemp.width, MultScatteringLUTTemp.height, TextureFormat.RGBAHalf, false, true);
+        RenderTexture.active = MultScatteringLUTTemp;
+        tex2.ReadPixels(new Rect(0, 0, MultScatteringLUTTemp.width, MultScatteringLUTTemp.height), 0, 0);
+        tex2.Apply();
+        System.IO.File.WriteAllBytes(Application.dataPath + "/MultScatteringPNG.png", tex.EncodeToPNG());
+
     }
 
 }

@@ -1,18 +1,31 @@
 #pragma kernel OpticalDepthLUTGenerator
 #pragma kernel SingleScaterringLUTGenerator
+#pragma kernel MultiScaterringLUTGenerator
 #define PI 3.141592653
 #define PI2 6.283185306
 #define PIHalf 1.5707963265
 
 #define NUM_INTEGRATION_STEPS 20
+#define NUM_ZENITH_STEPS 20
+#define NUM_AZIMUTH_STEPS 20
+bool bIsFirstSctr;
 float fScatteringCoeff;
 float fAttenuationCoeff;
 float fReferenceParticleRadius;
 float4 f4LUTSize, f4SingleSctrLUTSize;
 RWTexture2D<float4> OpticalDepthLUT; 
 RWTexture2D<float4> SingleSctrLUT; 
+RWTexture2D<float4> IterateLUT;
+RWTexture2D<float4> MultiSctrLUT;
 Texture2D<float2> NoiseMap;
+Texture2D<float> SingleSctrInput;
 SamplerState sampler_NoiseMap
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+SamplerState sampler_SingleSctrInput
 {
     Filter = MIN_MAG_MIP_LINEAR;
     AddressU = Wrap;
@@ -35,6 +48,24 @@ inline uint4 C2ToC4(uint2 coord, uint4 size)
     res.w = coord.y % size.w;
     return res;
 }
+
+inline float2 F4ToF2(float4 coord, uint4 size)
+{
+    float2 res;
+    res.x = coord.x * size.y + coord.y;
+    res.y = coord.z * size.w + coord.w;
+    return res;
+}
+
+inline float3 SphereCoord2Vec3(float zen, float az)
+{
+    float y , t;
+    sincos(zen, t, y);
+    float x , z;
+    sincos(az, z, x);
+    return float3(x*t , y , z*t);
+}
+
 inline int GetRaySphereIntersection(float3 f3ro, float3 f3rd, float3 f3center, inout float2 f2RayIsecs)
 {
     float3 f3BiDir= f3ro - f3center;
@@ -125,13 +156,13 @@ inline void SctrLUTToWorldParams(float4 f4Coord, out float3 f3StartPosUSSpace, o
 {
     f3LightDirUSSpace = float3(0,0,1);
     f3StartPosUSSpace = float3(0,0,0);
-    sincos(f4Coord.x,f3StartPosUSSpace.x,f3StartPosUSSpace.z);
+    sincos(f4Coord.x,f3StartPosUSSpace.z,f3StartPosUSSpace.x);
     f3StartPosUSSpace *= f4Coord.w;                 //Scale start pos according to the distance from center
 
     float3 f3OriginDir = float3(0,0,0);
     float t = 0;
     sincos(f4Coord.z,t,f3OriginDir.y);
-    sincos(f4Coord.y,f3OriginDir.x,f3OriginDir.z);
+    sincos(f4Coord.y,f3OriginDir.z,f3OriginDir.x);
     f3OriginDir.xz *= t;
     // float3x3 f3x3mat;
     // ConstructTransMat(f3LightDirUSSpace, f3StartPosUSSpace, f3x3mat);
@@ -139,7 +170,21 @@ inline void SctrLUTToWorldParams(float4 f4Coord, out float3 f3StartPosUSSpace, o
     //f3ViewDirUSSpace = mul(f3x3mat, f3OriginDir);
     f3ViewDirUSSpace = f3OriginDir;
 }
+inline void WorldToSctrLUTParams(float3 f3StartPosUSSpace, float3 f3ViewDirUSSpace ,out float4 f4Coord)
+{
+    f4Coord = float4(0,0,0,0);
+    f4Coord.w = length(f3StartPosUSSpace.xz);
+    f4Coord.x = atan2(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
+    f4Coord.z = acos(f3ViewDirUSSpace.y);
+    f4Coord.y = atan2(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
+}
 
+inline float HGPhase(float dotTheta, float g)
+{
+    float fTopPart  = 3*(1 - g * g) *(1 + dotTheta * dotTheta);
+    float fBottomPart = 4 * PI2 * (2 + g * g) * pow((1 + g * g - 2 * g * dotTheta), 1.5);
+    return fTopPart / fBottomPart;
+}
 
 [numthreads(32,32,1)]
 void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
@@ -191,5 +236,49 @@ void SingleScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
         fInscattering +=fAttenuation * fScatteringCoeff;
         fCloudMassToCamera += fStepLen * fReferenceParticleRadius;
     }
-    SingleSctrLUT[ui2id]=float4(fInscattering * fStepLen * fReferenceParticleRadius,0,0,1);
+    SingleSctrLUT[ui2id]= float4(fInscattering * fStepLen * fReferenceParticleRadius,0,0,1);
+    IterateLUT[ui2id] = float4(fInscattering * fStepLen * fReferenceParticleRadius,0,0,1);
+}
+
+[numthreads(32,32,1)]
+void MultiScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
+{
+    uint4 ui4coord = C2ToC4(ui2id, floor(f4SingleSctrLUTSize));
+    float3 f3stepAngle = float3(PI,PI2,PI) / f4SingleSctrLUTSize.xyz;
+    float3 f3SphereCoord = f3stepAngle * ui4coord.xyz;
+    float3 f3EntryPoint , f3ViewDirUSSpace , f3LightDirUSSpace;
+    float4 f4Coord = float4(f3SphereCoord,1);
+    SctrLUTToWorldParams(f4Coord,f3EntryPoint,f3ViewDirUSSpace,f3LightDirUSSpace);
+
+    float fJ = 0;
+    float fTotalSolidAngle = 0;
+    const float fNumZenithSteps = NUM_ZENITH_STEPS;
+    const float fNumAzimuthSteps = NUM_AZIMUTH_STEPS;
+    const float fZenithSpan = PI;
+    const float fAzimuthSpan = PI2;
+
+    for(float zen = 0.5; zen < fNumZenithSteps; ++zen)
+    {
+        for(float azi = 0.5; azi < fNumAzimuthSteps; ++azi)
+        {
+            float fZenith = zen / fNumZenithSteps * fZenithSpan;
+            float fAzimuth = (azi / fNumAzimuthSteps - 0.5) * fAzimuthSpan;
+            float3 f3CurrDir = SphereCoord2Vec3(fZenith , fAzimuth);
+            float4 f4CurrDirLUTCoords;
+            WorldToSctrLUTParams(f3EntryPoint, f3CurrDir, f4CurrDirLUTCoords);
+            float4 f4coord = float4(f4CurrDirLUTCoords.xyz /  f3stepAngle,1);
+            float fCurrSctr = SingleSctrInput.SampleLevel(sampler_SingleSctrInput,F4ToF2(f4coord, f4SingleSctrLUTSize),0).x;
+            if(bIsFirstSctr)
+                fCurrSctr *= HGPhase(dot(-f3CurrDir, f3LightDirUSSpace) , 0.9);
+            fCurrSctr *= HGPhase(dot(f3CurrDir, f3ViewDirUSSpace) , 0.7);
+            float fdZenithAngle = fZenithSpan / fNumZenithSteps;
+            float fdAzimuthAngle = fAzimuthSpan / fNumAzimuthSteps * sin(fZenith);
+            float fDiffSolidAngle = fdZenithAngle + fdAzimuthAngle;
+            fTotalSolidAngle += fDiffSolidAngle;
+            fJ += fCurrSctr * fDiffSolidAngle;
+        }
+    }
+    fJ *= 2* PI2 / fTotalSolidAngle;
+    MultiSctrLUT[ui2id] = float4(fJ, 0, 0, 1);
+    IterateLUT[ui2id] = float4(fJ, 0, 0, 1);
 }
