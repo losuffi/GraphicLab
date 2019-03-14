@@ -99,7 +99,7 @@ public class ParticleGeneration : MonoBehaviour
         RenderTexture.active = MultScatteringLUTTemp;
         tex2.ReadPixels(new Rect(0, 0, MultScatteringLUTTemp.width, MultScatteringLUTTemp.height), 0, 0);
         tex2.Apply();
-        System.IO.File.WriteAllBytes(Application.dataPath + "/MultScatteringPNG.png", tex.EncodeToPNG());
+        System.IO.File.WriteAllBytes(Application.dataPath + "/MultScatteringPNG.png", tex2.EncodeToPNG());
 
     }
 

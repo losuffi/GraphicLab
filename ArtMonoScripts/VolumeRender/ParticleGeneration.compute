@@ -54,7 +54,7 @@ inline float2 F4ToF2(float4 coord, uint4 size)
     float2 res;
     res.x = coord.x * size.y + coord.y;
     res.y = coord.z * size.w + coord.w;
-    return res;
+    return res/float2(size.x*size.y,size.z*size.w);
 }
 
 inline float3 SphereCoord2Vec3(float zen, float az)
@@ -66,7 +66,7 @@ inline float3 SphereCoord2Vec3(float zen, float az)
     return float3(x*t , y , z*t);
 }
 
-inline int GetRaySphereIntersection(float3 f3ro, float3 f3rd, float3 f3center, inout float2 f2RayIsecs)
+inline int GetRaySphereIntersection(float3 f3ro, float3 f3rd, float3 f3center, out float2 f2RayIsecs)
 {
     float3 f3BiDir= f3ro - f3center;
     float A = dot(f3rd,f3rd);
@@ -81,7 +81,7 @@ inline int GetRaySphereIntersection(float3 f3ro, float3 f3rd, float3 f3center, i
     else
     {
         D = sqrt(D);
-        f2RayIsecs = float2(-B - D , -B + D);
+        f2RayIsecs = float2(-B - D , -B + D) / (2 * A);
         return 1;
     }
 }
@@ -113,7 +113,7 @@ float SampleNoise(in float3 f3Pos)
     return lerp(f2res.x,f2res.y,f3F.z);
 }
 
-float GetRandomDensity(in float f3Pos, float fStartFreq, int iNumOctaves = 3, float fAmplitudeScale = 0.6)
+float GetRandomDensity(in float f3Pos, float fStartFreq, int iNumOctaves = 6, float fAmplitudeScale = 0.6)
 {
     float fNoise = 0;
     float fAmplitude = 1;
@@ -137,6 +137,7 @@ float GetMetabolDenstiy(in float r)
 
 float ComputeDensity(float3 f3CurrPos)
 {
+    f3CurrPos /= fReferenceParticleRadius;
     float fDistToCenter = length(f3CurrPos);
     float fMetabolDensity = GetMetabolDenstiy(fDistToCenter);
     float fDensity = 0;
@@ -157,7 +158,7 @@ inline void SctrLUTToWorldParams(float4 f4Coord, out float3 f3StartPosUSSpace, o
     f3LightDirUSSpace = float3(0,0,1);
     f3StartPosUSSpace = float3(0,0,0);
     sincos(f4Coord.x,f3StartPosUSSpace.z,f3StartPosUSSpace.x);
-    f3StartPosUSSpace *= f4Coord.w;                 //Scale start pos according to the distance from center
+    f3StartPosUSSpace *= (f4Coord.w * fReferenceParticleRadius);                 //Scale start pos according to the distance from center
 
     float3 f3OriginDir = float3(0,0,0);
     float t = 0;
@@ -231,7 +232,7 @@ void SingleScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
     {
         float3 f3CurrPos = f3EntryPoint + f3Step * fStepNum;
         GetRaySphereIntersection(f3CurrPos, f3LightDirUSSpace, 0,f2RayIsecs);
-        float fCloudMassToLight = f2RayIsecs.x * fReferenceParticleRadius;
+        float fCloudMassToLight = abs(f2RayIsecs.x) * fReferenceParticleRadius;
         float fAttenuation = exp(-fAttenuationCoeff * (fCloudMassToLight + fCloudMassToCamera) );
         fInscattering +=fAttenuation * fScatteringCoeff;
         fCloudMassToCamera += fStepLen * fReferenceParticleRadius;

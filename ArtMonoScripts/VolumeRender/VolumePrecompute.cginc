@@ -1,0 +1,97 @@
+//Properties
+sampler2D _DensityLUT;
+sampler2D _ScatteringLUT;
+float _SampleRadiusScale;
+float4 _DensityLUTSize;
+float4 _ScatteringLUTSize;
+float _ParticleDensity;
+float _AttenuationCoff;
+float _EarthRadius;
+float2 _LightAttenuation;
+float2 _CloudAmbientParams;
+//---------------------------------
+//Define
+#define PI 3.141592653
+#define PI2 6.283185306
+#define PIHalf 1.5707963265
+
+#define NUM_INTEGRATION_STEPS 20
+#define NUM_ZENITH_STEPS 20
+#define NUM_AZIMUTH_STEPS 20
+//---------------------------------
+
+inline float2 F4ToF2(float4 coord, uint4 size)
+{
+    float2 res;
+    res.x = coord.x * size.y + coord.y;
+    res.y = coord.z * size.w + coord.w;
+    return res/float2(size.x*size.y,size.z*size.w);
+}
+
+inline void WorldToOpitcalLUTParams(float3 f3StartPosUSSpace, float3 f3ViewDirUSSpace ,out float4 f4Coord)
+{
+    f4Coord = float4(0,0,0,0);
+    f4Coord.y = acos(f3StartPosUSSpace.y);
+    f4Coord.x = atan2(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
+    f4Coord.z = acos(f3ViewDirUSSpace.y);
+    f4Coord.y = atan2(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
+}
+
+inline void WorldToSctrLUTParams(float3 f3StartPosUSSpace, float3 f3ViewDirUSSpace ,out float4 f4Coord)
+{
+    f4Coord = float4(0,0,0,0);
+    f4Coord.w = length(f3StartPosUSSpace.xz);
+    f4Coord.x = atan2(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
+    f4Coord.z = acos(f3ViewDirUSSpace.y);
+    f4Coord.y = atan2(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
+}
+
+inline void SampleDensity(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out float fNormalDensity)
+{
+    fNormalDensity = 1.f;
+    f3SampleEntryUSSpace /= _SampleRadiusScale;
+    float4 f4Coord;
+    WorldToOpitcalLUTParams(f3SampleEntryUSSpace, f3ViewDirUSSpace, f4Coord);
+    float2 uv =F4ToF2(f4Coord, _DensityLUTSize);
+    fNormalDensity = tex2Dlod(_DensityLUT, half4(uv,0,0)).r;
+   // return uv;
+}
+
+inline void SampleSctr(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out float fMultiScattering)
+{
+    fMultiScattering = 1.f;
+    f3SampleEntryUSSpace /= _SampleRadiusScale;
+    float4 f4Coord;
+    WorldToSctrLUTParams(f3SampleEntryUSSpace, f3ViewDirUSSpace, f4Coord);
+    fMultiScattering = tex2Dlod(_ScatteringLUT, half4(F4ToF2(f4Coord, _ScatteringLUTSize),0,0)).r;
+}
+
+inline float HGPhase(float dotTheta, float g)
+{
+    float fTopPart  = 3*(1 - g * g) *(1 + dotTheta * dotTheta);
+    float fBottomPart = 4 * PI2 * (2 + g * g) * pow((1 + g * g - 2 * g * dotTheta), 1.5);
+    return fTopPart / fBottomPart;
+}
+
+fixed4 BlendParticalRender(float fNormalDensity, float fMultiSctr, float fRayLenth, float fDotWithLight, float3 lightCol, float3 AmbientCol, float3 f3SampleEntryUSSpace)
+{
+    float fCloudMass = fNormalDensity * fRayLenth;
+    fCloudMass *= _ParticleDensity;
+
+    float fTransparency = exp( -fCloudMass * _AttenuationCoff);
+
+    float phaseFunc = HGPhase(fDotWithLight , 0.8);
+    float3 f3SingleScattering = fTransparency * lightCol * _LightAttenuation.x * phaseFunc;
+
+    float3 f3MultiScattering =  (1 - fTransparency) * fMultiSctr * _LightAttenuation.y * lightCol;
+
+    //Compute ambient light 
+    float3 f3EarthCentre = float3(0, -_EarthRadius, 0);
+    float fEntryPointAltitude = length(f3SampleEntryUSSpace - f3EarthCentre);
+    float fCloudBottomBoundary = _EarthRadius + _CloudAmbientParams.x - _CloudAmbientParams.y / 2.0;
+    float fAmbientStrength = (fEntryPointAltitude - fCloudBottomBoundary) / _CloudAmbientParams.y;
+    fAmbientStrength =clamp(fAmbientStrength , 0.3 , 1);
+    float3 f3Ambient = (1 - fTransparency) * fAmbientStrength * AmbientCol;
+    //return fixed4(fTransparency,0,0,1);
+    return fixed4(f3SingleScattering + f3MultiScattering + f3Ambient , fTransparency);
+}
