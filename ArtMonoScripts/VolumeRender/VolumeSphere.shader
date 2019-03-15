@@ -136,16 +136,10 @@ Shader "ArtStandard/Volume/Sphere"
                 float4 sum=0;
                 float t= 0.0;
                 
-                for(int i=0;i<1;++i)
-                {
-                    t+=0.1;
-                    
-                    sum.a+=tex2D(_Noise,float2(t,t*0.3)).x;//*tex2D(_Noise,float2(t,i/30)).x;//*noise(origin+i*dirn);
-                }
-                //MARCH(STEP_SIZE,map5);
-                // MARCH(STEP_SIZE,map4);
-                // MARCH(STEP_SIZE,map3);
-                // MARCH(STEP_SIZE,map2);
+                MARCH(STEP_SIZE,map5);
+                MARCH(STEP_SIZE,map4);
+                MARCH(STEP_SIZE,map3);
+                MARCH(STEP_SIZE,map2);
                 return saturate(sum);
             }
             ENDCG

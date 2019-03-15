@@ -1,6 +1,7 @@
 #pragma kernel OpticalDepthLUTGenerator
 #pragma kernel SingleScaterringLUTGenerator
 #pragma kernel MultiScaterringLUTGenerator
+#pragma kernel Tex3DTest
 #define PI 3.141592653
 #define PI2 6.283185306
 #define PIHalf 1.5707963265
@@ -31,6 +32,12 @@ SamplerState sampler_SingleSctrInput
     AddressU = Wrap;
     AddressV = Wrap;
 };
+inline float Atan2Abs(float fy,float fx)
+{
+    float oR = atan2(fy,fx);
+    oR = oR * step(0, oR) + step(oR, 0) * (PI2 + oR);
+    return oR;
+}
 inline uint4 C3ToC4(uint3 coord,uint4 size) 
 {
     uint4 res;
@@ -103,7 +110,7 @@ float SampleNoise(in float3 f3Pos)
 {
     float3 f3P = floor(f3Pos);
     float3 f3F = frac(f3Pos);
-    float2 uv = float2(f3P.xy+normalize(float2(5.4,19.0))*0.1);
+    float2 uv = float2(f3P.xy+normalize(float2(5.4,13.0))*0.1);
     f3F = f3F * f3F * (3.0 - 2.0 * f3F);
     float2 f2res = 
     lerp(
@@ -113,14 +120,14 @@ float SampleNoise(in float3 f3Pos)
     return lerp(f2res.x,f2res.y,f3F.z);
 }
 
-float GetRandomDensity(in float f3Pos, float fStartFreq, int iNumOctaves = 6, float fAmplitudeScale = 0.6)
+float GetRandomDensity(float3 f3Pos, float fStartFreq, int iNumOctaves, float fAmplitudeScale)
 {
     float fNoise = 0;
     float fAmplitude = 1;
     float fFreq = fStartFreq;
     for (int i = 0; i < iNumOctaves; ++i)
     {
-        fNoise += (SampleNoise(f3Pos * fFreq) - 0.5) * fAmplitude;
+        fNoise += (SampleNoise(f3Pos * fFreq).r - 0.5) * fAmplitude;
         fFreq *= 1.7;
         fAmplitude *= fAmplitudeScale;
     }
@@ -141,8 +148,9 @@ float ComputeDensity(float3 f3CurrPos)
     float fDistToCenter = length(f3CurrPos);
     float fMetabolDensity = GetMetabolDenstiy(fDistToCenter);
     float fDensity = 0;
-    fDensity = saturate(1.0 * saturate(fMetabolDensity) + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos + 0.5, 0.15, 4, 0.7));
-    return fDistToCenter;
+
+    fDensity = saturate(1.0 * saturate(fMetabolDensity) + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos, 0.15, 1, 0.2));
+    return fDensity;
 }
 
 inline void ConstructTransMat(float3 f3aDir,float3 f3inlineBidir, out float3x3 f3x3mat)
@@ -162,8 +170,8 @@ inline void SctrLUTToWorldParams(float4 f4Coord, out float3 f3StartPosUSSpace, o
 
     float3 f3OriginDir = float3(0,0,0);
     float t = 0;
-    sincos(f4Coord.z,t,f3OriginDir.y);
-    sincos(f4Coord.y,f3OriginDir.z,f3OriginDir.x);
+    sincos(f4Coord.y,t,f3OriginDir.y);
+    sincos(f4Coord.z,f3OriginDir.z,f3OriginDir.x);
     f3OriginDir.xz *= t;
     // float3x3 f3x3mat;
     // ConstructTransMat(f3LightDirUSSpace, f3StartPosUSSpace, f3x3mat);
@@ -175,15 +183,15 @@ inline void WorldToSctrLUTParams(float3 f3StartPosUSSpace, float3 f3ViewDirUSSpa
 {
     f4Coord = float4(0,0,0,0);
     f4Coord.w = length(f3StartPosUSSpace.xz);
-    f4Coord.x = atan2(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
-    f4Coord.z = acos(f3ViewDirUSSpace.y);
-    f4Coord.y = atan2(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
+    f4Coord.x = Atan2Abs(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
+    f4Coord.y = acos(f3ViewDirUSSpace.y);
+    f4Coord.z = Atan2Abs(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
 }
 
 inline float HGPhase(float dotTheta, float g)
 {
-    float fTopPart  = 3*(1 - g * g) *(1 + dotTheta * dotTheta);
-    float fBottomPart = 4 * PI2 * (2 + g * g) * pow((1 + g * g - 2 * g * dotTheta), 1.5);
+    float fTopPart  = 1 - g * g;
+    float fBottomPart = 4 * PI2 * pow(1 + g * g - 2 * g * dotTheta , 1.5);
     return fTopPart / fBottomPart;
 }
 
@@ -191,7 +199,7 @@ inline float HGPhase(float dotTheta, float g)
 void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 {
     uint4 ui4coord = C2ToC4(ui2id,floor(f4LUTSize));
-    float4 f4stepAngle = float4(PI2,PI,PI2,PIHalf) / f4LUTSize;
+    float4 f4stepAngle = float4(PI2,PI,PI2,PI) / f4LUTSize;
     float4 f4SphereFieldCoord = f4stepAngle * ui4coord;
     float3 f3StartPos,f3RayDir;
     SphereParamsToDescartesParams(f4SphereFieldCoord, f3StartPos, f3RayDir);
@@ -213,7 +221,7 @@ void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 void SingleScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 {
     uint4 ui4coord = C2ToC4(ui2id, floor(f4SingleSctrLUTSize));
-    float3 f3stepAngle = float3(PI,PI2,PI) / f4SingleSctrLUTSize.xyz;
+    float3 f3stepAngle = float3(PI,PI,PI2) / f4SingleSctrLUTSize.xyz;
     float3 f3SphereCoord = f3stepAngle * ui4coord.xyz;
     float3 f3EntryPoint , f3ViewDirUSSpace , f3LightDirUSSpace;
     float4 f4Coord = float4(f3SphereCoord,1);
@@ -282,4 +290,11 @@ void MultiScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
     fJ *= 2* PI2 / fTotalSolidAngle;
     MultiSctrLUT[ui2id] = float4(fJ, 0, 0, 1);
     IterateLUT[ui2id] = float4(fJ, 0, 0, 1);
+}
+
+RWTexture3D<float4> tex;
+[numthreads(32,32,1)]
+void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID)
+{
+    tex[ui3id] = float4(0,1,0,1);
 }

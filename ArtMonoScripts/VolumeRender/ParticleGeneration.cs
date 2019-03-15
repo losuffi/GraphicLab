@@ -23,6 +23,9 @@ public class ParticleGeneration : MonoBehaviour
     [SerializeField]
     private int ScatteringCount;
 
+    //[SerializeField]
+    private RenderTexture Test3DTex;
+
 
     private RenderTexture OpticalDepthLUTTemp;
     private RenderTexture SingleScatteringLUTTemp;
@@ -30,9 +33,9 @@ public class ParticleGeneration : MonoBehaviour
 
     private RenderTexture[] SctrTemp;
 
-    public RenderTexture Generation()
+    public RenderTexture Generation(out RenderTexture OtherTemp)
     {
-        OpticalDepthLUTTemp = new RenderTexture(Mathf.FloorToInt(LUTSize.x * LUTSize.y), Mathf.FloorToInt(LUTSize.z * LUTSize.w), 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        OpticalDepthLUTTemp = new RenderTexture(Mathf.FloorToInt(LUTSize.x * LUTSize.y), Mathf.FloorToInt(LUTSize.z * LUTSize.w), 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
         OpticalDepthLUTTemp.enableRandomWrite = true;
         OpticalDepthLUTTemp.Create();
 
@@ -46,20 +49,20 @@ public class ParticleGeneration : MonoBehaviour
         GenerationCS.Dispatch(kernel, Mathf.FloorToInt(LUTSize.x * LUTSize.y) / 32, Mathf.FloorToInt(LUTSize.z * LUTSize.w) / 32, 1);
 
         //Single Scarttering Precompute
-        SingleScatteringLUTTemp = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        SingleScatteringLUTTemp = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
         SingleScatteringLUTTemp.enableRandomWrite = true;
         SingleScatteringLUTTemp.Create();
         //Mult Scattering 
-        MultScatteringLUTTemp = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        MultScatteringLUTTemp = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
         MultScatteringLUTTemp.enableRandomWrite = true;
         MultScatteringLUTTemp.Create();
 
         SctrTemp = new RenderTexture[2];
-        SctrTemp[0] = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        SctrTemp[0] = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
         SctrTemp[0].enableRandomWrite = true;
         SctrTemp[0].Create();
 
-        SctrTemp[1] = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+        SctrTemp[1] = new RenderTexture(Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y), Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w), 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
         SctrTemp[1].enableRandomWrite = true;
         SctrTemp[1].Create();
 
@@ -80,29 +83,40 @@ public class ParticleGeneration : MonoBehaviour
             GenerationCS.SetBool("bIsFirstSctr", i == 0);
             GenerationCS.Dispatch(kernel, Mathf.FloorToInt(SingleScartteringLUTSize.x * SingleScartteringLUTSize.y) / 32, Mathf.FloorToInt(SingleScartteringLUTSize.z * SingleScartteringLUTSize.w) / 32, 1);
         }
-        
+        OtherTemp = OpticalDepthLUTTemp;
         return MultScatteringLUTTemp;
     }
     public void SaveGeneration()
     {
         if (OpticalDepthLUTTemp == null)
             return;
-        var tex = new Texture2D(OpticalDepthLUTTemp.width, OpticalDepthLUTTemp.height, TextureFormat.RGBA32, false, true);
+        var tex = new Texture2D(OpticalDepthLUTTemp.width, OpticalDepthLUTTemp.height, TextureFormat.RGBAFloat, false, true);
         RenderTexture.active = OpticalDepthLUTTemp;
         tex.ReadPixels(new Rect(0, 0, OpticalDepthLUTTemp.width, OpticalDepthLUTTemp.height), 0, 0);
         tex.Apply();
         System.IO.File.WriteAllBytes(Application.dataPath + "/OpticalDepthPNG.png", tex.EncodeToPNG());
 
-        if(MultScatteringLUTTemp == null)
+        if (MultScatteringLUTTemp == null)
             return;
-        var tex2 = new Texture2D(MultScatteringLUTTemp.width, MultScatteringLUTTemp.height, TextureFormat.RGBAHalf, false, true);
+        var tex2 = new Texture2D(MultScatteringLUTTemp.width, MultScatteringLUTTemp.height, TextureFormat.RGBAFloat, false, true);
         RenderTexture.active = MultScatteringLUTTemp;
         tex2.ReadPixels(new Rect(0, 0, MultScatteringLUTTemp.width, MultScatteringLUTTemp.height), 0, 0);
         tex2.Apply();
         System.IO.File.WriteAllBytes(Application.dataPath + "/MultScatteringPNG.png", tex2.EncodeToPNG());
-
     }
-
+    public RenderTexture Test3DTexutureWrite()
+    {
+        //Test3DTex.enableRandomWrite = true;
+        Test3DTex = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGBFloat);
+        Test3DTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
+        Test3DTex.volumeDepth = 2;
+        Test3DTex.enableRandomWrite = true;
+        Test3DTex.Create();
+        int kernel = GenerationCS.FindKernel("Tex3DTest");
+        GenerationCS.SetTexture(kernel, "tex", Test3DTex);
+        GenerationCS.Dispatch(kernel, Test3DTex.width / 32, Test3DTex.height / 32, 2);
+        return Test3DTex;
+    }
 }
 [System.Serializable]
 public struct ReferenceParticle

@@ -188,7 +188,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1072345011}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!4 &1072345015
 Transform:
   m_ObjectHideFlags: 0
@@ -198,7 +198,7 @@ Transform:
   m_GameObject: {fileID: 1072345011}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 10, y: 10, z: 10}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 5
@@ -326,9 +326,9 @@ MonoBehaviour:
   referenceParticle:
     standardScale: 1
   GenerationCS: {fileID: 7200000, guid: 1416dc20200f0664c95a8c3fad0e0949, type: 3}
-  LUTSize: {x: 32, y: 16, z: 32, w: 16}
+  LUTSize: {x: 32, y: 16, z: 32, w: 32}
   SingleScartteringLUTSize: {x: 32, y: 16, z: 64, w: 1}
-  noiseSource: {fileID: 2800000, guid: bbff27694d1a6c646a53c06a1ac7688b, type: 3}
+  noiseSource: {fileID: 2800000, guid: 69c1d00acdc6dd044b012958b09325bb, type: 3}
   ReferenceParticleRadius: 200
   AttenuationCoeff: 0.0002
   ScatteringCoeff: 0.07

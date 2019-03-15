@@ -20,30 +20,42 @@ float2 _CloudAmbientParams;
 #define NUM_AZIMUTH_STEPS 20
 //---------------------------------
 
+inline float Atan2Abs(float fy,float fx)
+{
+    float oR = atan2(fy,fx);
+    oR = oR * step(0, oR) + step(oR, 0) * (PI2 + oR);
+    return oR;
+}
+
 inline float2 F4ToF2(float4 coord, uint4 size)
 {
     float2 res;
     res.x = coord.x * size.y + coord.y;
     res.y = coord.z * size.w + coord.w;
-    return res/float2(size.x*size.y,size.z*size.w);
+    return res/float2(size.x * size.y, size.z * size.w);
 }
 
 inline void WorldToOpitcalLUTParams(float3 f3StartPosUSSpace, float3 f3ViewDirUSSpace ,out float4 f4Coord)
 {
     f4Coord = float4(0,0,0,0);
     f4Coord.y = acos(f3StartPosUSSpace.y);
-    f4Coord.x = atan2(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
-    f4Coord.z = acos(f3ViewDirUSSpace.y);
-    f4Coord.y = atan2(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
+    f4Coord.x = Atan2Abs(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
+    f4Coord.w = acos(f3ViewDirUSSpace.y);
+    f4Coord.z = Atan2Abs(f3ViewDirUSSpace.z, f3ViewDirUSSpace.x);
+    f4Coord /= float4(PI2,PI,PI2,PI);
+    f4Coord *= _DensityLUTSize;
 }
 
 inline void WorldToSctrLUTParams(float3 f3StartPosUSSpace, float3 f3ViewDirUSSpace ,out float4 f4Coord)
 {
     f4Coord = float4(0,0,0,0);
     f4Coord.w = length(f3StartPosUSSpace.xz);
-    f4Coord.x = atan2(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
-    f4Coord.z = acos(f3ViewDirUSSpace.y);
-    f4Coord.y = atan2(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
+    f4Coord.x = Atan2Abs(f3StartPosUSSpace.z, f3StartPosUSSpace.x);
+    f4Coord.x = (PI2 - f4Coord.x) * step(PI, f4Coord.x) + step(f4Coord.x, PI) * f4Coord.x;
+    f4Coord.y = acos(f3ViewDirUSSpace.y);
+    f4Coord.z = Atan2Abs(f3ViewDirUSSpace.x, f3ViewDirUSSpace.z);
+    f4Coord /= float4(PI, PI, PI2, 1);
+    f4Coord *= _ScatteringLUTSize;
 }
 
 inline void SampleDensity(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out float fNormalDensity)
@@ -54,7 +66,7 @@ inline void SampleDensity(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, 
     WorldToOpitcalLUTParams(f3SampleEntryUSSpace, f3ViewDirUSSpace, f4Coord);
     float2 uv =F4ToF2(f4Coord, _DensityLUTSize);
     fNormalDensity = tex2Dlod(_DensityLUT, half4(uv,0,0)).r;
-   // return uv;
+    //return f4Coord.z;
 }
 
 inline void SampleSctr(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out float fMultiScattering)
@@ -68,8 +80,8 @@ inline void SampleSctr(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out
 
 inline float HGPhase(float dotTheta, float g)
 {
-    float fTopPart  = 3*(1 - g * g) *(1 + dotTheta * dotTheta);
-    float fBottomPart = 4 * PI2 * (2 + g * g) * pow((1 + g * g - 2 * g * dotTheta), 1.5);
+    float fTopPart  = 1 - g * g;
+    float fBottomPart = 4 * PI2 * pow(1 + g * g - 2 * g * dotTheta , 1.5);
     return fTopPart / fBottomPart;
 }
 
@@ -92,6 +104,5 @@ fixed4 BlendParticalRender(float fNormalDensity, float fMultiSctr, float fRayLen
     float fAmbientStrength = (fEntryPointAltitude - fCloudBottomBoundary) / _CloudAmbientParams.y;
     fAmbientStrength =clamp(fAmbientStrength , 0.3 , 1);
     float3 f3Ambient = (1 - fTransparency) * fAmbientStrength * AmbientCol;
-    //return fixed4(fTransparency,0,0,1);
-    return fixed4(f3SingleScattering + f3MultiScattering + f3Ambient , fTransparency);
+    return fixed4(f3SingleScattering + f3MultiScattering + f3Ambient , 1-fTransparency);
 }

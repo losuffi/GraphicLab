@@ -1,4 +1,4 @@
-Shader "ArtStandard/Volume/Unit"
+Shader "ArtStandard/Volume/Standard"
 {
     Properties
     {
@@ -32,9 +32,8 @@ Shader "ArtStandard/Volume/Unit"
             float _fRayLen;
             struct v2f
             {
-                float4 pos:SV_POSITION;
                 float3 eyeView:TEXCOORD0;
-                float3 opos:TEXCOORD1;
+                float3 wpos:TEXCOORD1;
             };
 
             v2f vert(float4 v: POSITION)
@@ -42,7 +41,7 @@ Shader "ArtStandard/Volume/Unit"
                 v2f o;
                 o.pos = UnityObjectToClipPos(v);
                 o.opos = v;
-                float3 wpos = mul(unity_ObjectToWorld,v).xyz;
+                o.wpos = mul(unity_ObjectToWorld,v).xyz;
                 o.eyeView = _WorldSpaceCameraPos - wpos;
                 return o;
             }
