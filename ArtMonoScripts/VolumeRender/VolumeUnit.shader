@@ -20,7 +20,7 @@ Shader "ArtStandard/Volume/Unit"
         {
             Name "ForwardBase"
             Tags {"LightMode" = "ForwardBase"}
-            Cull Off
+            Cull Back
             Blend SrcAlpha OneMinusSrcAlpha
             CGPROGRAM
             #include "Lighting.cginc"
@@ -43,7 +43,7 @@ Shader "ArtStandard/Volume/Unit"
                 o.pos = UnityObjectToClipPos(v);
                 o.opos = v;
                 float3 wpos = mul(unity_ObjectToWorld,v).xyz;
-                o.eyeView = _WorldSpaceCameraPos - wpos;
+                o.eyeView = normalize(_WorldSpaceCameraPos - wpos);
                 return o;
             }
 
@@ -53,7 +53,7 @@ Shader "ArtStandard/Volume/Unit"
                 SampleDensity(o.opos, o.eyeView, fNormalDensity);
                 float fMultiSctr;
                 SampleSctr(o.opos, o.eyeView, fMultiSctr);
-                float dotTheta = dot(mul(unity_WorldToObject, _WorldSpaceLightPos0).xyz , o.eyeView);
+                float dotTheta = dot(_WorldSpaceLightPos0.xyz , o.eyeView);
                 return BlendParticalRender(fNormalDensity, fMultiSctr, _fRayLen, dotTheta, _LightColor0.rgb, unity_AmbientSky.rgb, o.opos);
             }
             ENDCG

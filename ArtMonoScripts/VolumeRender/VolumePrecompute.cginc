@@ -30,8 +30,8 @@ inline float Atan2Abs(float fy,float fx)
 inline float2 F4ToF2(float4 coord, uint4 size)
 {
     float2 res;
-    res.x = coord.x * size.y + coord.y;
-    res.y = coord.z * size.w + coord.w;
+    res.x = coord.x + size.x * coord.y;
+    res.y = coord.z + size.z * coord.w;
     return res/float2(size.x * size.y, size.z * size.w);
 }
 
@@ -65,8 +65,8 @@ inline void SampleDensity(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, 
     float4 f4Coord;
     WorldToOpitcalLUTParams(f3SampleEntryUSSpace, f3ViewDirUSSpace, f4Coord);
     float2 uv =F4ToF2(f4Coord, _DensityLUTSize);
-    fNormalDensity = tex2Dlod(_DensityLUT, half4(uv,0,0)).r;
-    //return f4Coord.z;
+    fNormalDensity = tex2Dlod(_DensityLUT, float4(uv,0,0)).r;
+    //return step(,f3SampleEntryUSSpace.y);
 }
 
 inline void SampleSctr(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out float fMultiScattering)

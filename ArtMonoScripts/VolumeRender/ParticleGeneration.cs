@@ -13,8 +13,6 @@ public class ParticleGeneration : MonoBehaviour
     [SerializeField]
     private Vector4 SingleScartteringLUTSize;
     [SerializeField]
-    private Texture2D noiseSource;
-    [SerializeField]
     private float ReferenceParticleRadius;
     [SerializeField]
     private float AttenuationCoeff;
@@ -43,7 +41,6 @@ public class ParticleGeneration : MonoBehaviour
         transform.localScale *= referenceParticle.standardScale;
         int kernel = GenerationCS.FindKernel("OpticalDepthLUTGenerator");
         GenerationCS.SetTexture(kernel, "OpticalDepthLUT", OpticalDepthLUTTemp);
-        GenerationCS.SetTexture(kernel, "NoiseMap", noiseSource);
         GenerationCS.SetFloat("fReferenceParticleRadius", ReferenceParticleRadius);
         GenerationCS.SetVector("f4LUTSize", LUTSize);
         GenerationCS.Dispatch(kernel, Mathf.FloorToInt(LUTSize.x * LUTSize.y) / 32, Mathf.FloorToInt(LUTSize.z * LUTSize.w) / 32, 1);

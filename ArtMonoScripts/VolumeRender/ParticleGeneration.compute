@@ -18,14 +18,7 @@ RWTexture2D<float4> OpticalDepthLUT;
 RWTexture2D<float4> SingleSctrLUT; 
 RWTexture2D<float4> IterateLUT;
 RWTexture2D<float4> MultiSctrLUT;
-Texture2D<float2> NoiseMap;
 Texture2D<float> SingleSctrInput;
-SamplerState sampler_NoiseMap
-{
-    Filter = MIN_MAG_MIP_LINEAR;
-    AddressU = Wrap;
-    AddressV = Wrap;
-};
 SamplerState sampler_SingleSctrInput
 {
     Filter = MIN_MAG_MIP_LINEAR;
@@ -42,26 +35,48 @@ inline uint4 C3ToC4(uint3 coord,uint4 size)
 {
     uint4 res;
     res.xy=coord.xy;
-    res.z=coord.z / size.w;
-    res.w=coord.z % size.w;
+    res.z=coord.z % size.z;
+    res.w=coord.z / size.z;
     return res;
 }
 inline uint4 C2ToC4(uint2 coord, uint4 size)
 {
     uint4 res;
-    res.x = coord.x / size.y;
-    res.y = coord.x % size.y;
-    res.z = coord.y / size.w;
-    res.w = coord.y % size.w;
+    res.x = coord.x % size.x;
+    res.y = coord.y / size.x;
+    res.z = coord.y % size.z;
+    res.w = coord.y / size.z;
     return res;
+}
+
+inline float Rand2D(float2 fInput)
+{
+    return frac(sin(dot(fInput, float2(12.989, 53.321))) * 43574.422534);
+}
+
+inline float PerlinRand2D(float2 fInput)
+{
+    float2 fp = floor(fInput);
+    float2 fi = frac(fInput);
+    float2 u = fi * fi * (3.0 - 2.0 * fi);
+    return lerp(
+        lerp(Rand2D(fInput), Rand2D(fInput + float2(1.0, 0)), u.x),
+        lerp(Rand2D(fInput + float2(0, 1.0)), Rand2D(fInput + float2(1.0, 1.0)), u.x),  
+        u.y
+    );
+}
+
+inline float PerlinRand3D(float3 fInput)
+{
+    return PerlinRand2D(fInput.xy + fInput.z * normalize(float2(12.945, -78.563)));
 }
 
 inline float2 F4ToF2(float4 coord, uint4 size)
 {
     float2 res;
-    res.x = coord.x * size.y + coord.y;
-    res.y = coord.z * size.w + coord.w;
-    return res/float2(size.x*size.y,size.z*size.w);
+    res.x = coord.x + size.x * coord.y;
+    res.y = coord.z + size.z * coord.w;
+    return res/float2(size.x * size.y, size.z * size.w);
 }
 
 inline float3 SphereCoord2Vec3(float zen, float az)
@@ -106,19 +121,6 @@ inline void SphereParamsToDescartesParams(float4 f4sphereCoord,inout float3 f3Po
     f3Dir.y = fBiAxis * sin(f4sphereCoord.z);
 }
 
-float SampleNoise(in float3 f3Pos)
-{
-    float3 f3P = floor(f3Pos);
-    float3 f3F = frac(f3Pos);
-    float2 uv = float2(f3P.xy+normalize(float2(5.4,13.0))*0.1);
-    f3F = f3F * f3F * (3.0 - 2.0 * f3F);
-    float2 f2res = 
-    lerp(
-    lerp(NoiseMap.SampleLevel(sampler_NoiseMap,uv,0),NoiseMap.SampleLevel(sampler_NoiseMap,uv+float2(0,0.1),0),f3F.x),
-    lerp(NoiseMap.SampleLevel(sampler_NoiseMap,uv+float2(0.1,0),0),NoiseMap.SampleLevel(sampler_NoiseMap,uv+float2(0.1,0.1),0),f3F.x),
-    f3F.y);   
-    return lerp(f2res.x,f2res.y,f3F.z);
-}
 
 float GetRandomDensity(float3 f3Pos, float fStartFreq, int iNumOctaves, float fAmplitudeScale)
 {
@@ -127,7 +129,7 @@ float GetRandomDensity(float3 f3Pos, float fStartFreq, int iNumOctaves, float fA
     float fFreq = fStartFreq;
     for (int i = 0; i < iNumOctaves; ++i)
     {
-        fNoise += (SampleNoise(f3Pos * fFreq).r - 0.5) * fAmplitude;
+        fNoise += (PerlinRand3D(f3Pos * fFreq).r - 0.1) * fAmplitude;
         fFreq *= 1.7;
         fAmplitude *= fAmplitudeScale;
     }
@@ -148,8 +150,8 @@ float ComputeDensity(float3 f3CurrPos)
     float fDistToCenter = length(f3CurrPos);
     float fMetabolDensity = GetMetabolDenstiy(fDistToCenter);
     float fDensity = 0;
-
-    fDensity = saturate(1.0 * saturate(fMetabolDensity) + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos, 0.15, 1, 0.2));
+    // + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos, 0.15, 1, 0.2)
+    fDensity = saturate(GetRandomDensity(f3CurrPos, 0.15, 5, 0.2));
     return fDensity;
 }
 
@@ -198,7 +200,7 @@ inline float HGPhase(float dotTheta, float g)
 [numthreads(32,32,1)]
 void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 {
-    uint4 ui4coord = C2ToC4(ui2id,floor(f4LUTSize));
+    uint4 ui4coord = C2ToC4(ui2id, uint4(f4LUTSize));
     float4 f4stepAngle = float4(PI2,PI,PI2,PI) / f4LUTSize;
     float4 f4SphereFieldCoord = f4stepAngle * ui4coord;
     float3 f3StartPos,f3RayDir;
@@ -220,7 +222,7 @@ void OpticalDepthLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 [numthreads(32,32,1)]
 void SingleScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 {
-    uint4 ui4coord = C2ToC4(ui2id, floor(f4SingleSctrLUTSize));
+    uint4 ui4coord = C2ToC4(ui2id, uint4(f4LUTSize));
     float3 f3stepAngle = float3(PI,PI,PI2) / f4SingleSctrLUTSize.xyz;
     float3 f3SphereCoord = f3stepAngle * ui4coord.xyz;
     float3 f3EntryPoint , f3ViewDirUSSpace , f3LightDirUSSpace;
@@ -252,7 +254,7 @@ void SingleScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 [numthreads(32,32,1)]
 void MultiScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 {
-    uint4 ui4coord = C2ToC4(ui2id, floor(f4SingleSctrLUTSize));
+    uint4 ui4coord = C2ToC4(ui2id, uint4(f4LUTSize));
     float3 f3stepAngle = float3(PI,PI2,PI) / f4SingleSctrLUTSize.xyz;
     float3 f3SphereCoord = f3stepAngle * ui4coord.xyz;
     float3 f3EntryPoint , f3ViewDirUSSpace , f3LightDirUSSpace;
