@@ -23,7 +23,7 @@
             Cull Off
             Blend SrcAlpha OneMinusSrcAlpha
             CGPROGRAM
-            #define NUM_MAXSTEPS 1
+            #define NUM_MAXSTEPS 128
             #include "Lighting.cginc"
             #include "UnityCG.cginc"
             #include "VolumePrecompute.cginc"
@@ -31,46 +31,48 @@
             #pragma fragment frag
 
             float _fRayLen;
-            
+            sampler2D _src;
             struct v2f
             {
                 float4 pos : SV_POSITION;
                 float3 eyeView:TEXCOORD0;
-                float3 wpos : TEXCOORD1;
+                float2 uv:TEXCOORD1;
             };
 
-            v2f vert(float4 v: POSITION, float3 bin : Color)
+            inline float4 GetWorldPositionFromDepthValue( float2 uv, float linearDepth ) 
+            {
+                float camPosZ = _ProjectionParams.x + _ProjectionParams.y* linearDepth;
+                float height = 2 * camPosZ / unity_CameraProjection[1][1];
+                float width = _ScreenParams.x / _ScreenParams.y * height;
+                float camPosX = width * uv.x - width / 2;
+                float camPosY = height * uv.y - height / 2;
+                float4 camPos = float4(camPosX, camPosY, -camPosZ, 1.0);
+                return mul(unity_CameraToWorld, camPos);
+            }
+            v2f vert(appdata_base v)
             {
                 v2f o;
-                o.pos = UnityObjectToClipPos(v);
-                o.wpos = mul(unity_ObjectToWorld, v).xyz;
-                o.eyeView = o.wpos - _WorldSpaceCameraPos.xyz;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.eyeView = float3(-1,-1,1);
+                o.uv = v.texcoord;
                 return o;
             }
             fixed4 frag(v2f o):SV_Target
             {
-                float fNormalDensity;
-                float3 center = mul(unity_ObjectToWorld, float3(0, 0, 0));
-                bool bflag = any(step(abs(_WorldSpaceCameraPos.xyz - center) ,float3(5, 5, 5)));
-                float3 origin = bflag * _WorldSpaceCameraPos.xyz + !bflag * o.wpos;
-                //float3 origin = o.wpos;
-                float3 f3Dir = normalize(o.eyeView);
-                float4 f4Result = float4(0, 0, 0, 0);
                 float3 f3CurrPos = float3(0, 0, 0);
-                float bBreak = 1;
-                [unroll(NUM_MAXSTEPS)]
+                const float3 center = float3(0,5,10);
+                const float radius = 20.0;
+                float3 col = float3 (0, 0, 0);
+                float3 ray = normalize(GetWorldPositionFromDepthValue(o.uv,0.2).xyz - _WorldSpaceCameraPos.xyz);
                 for(int i = 1; i < NUM_MAXSTEPS; ++i)
                 {
-                    f3CurrPos += f3Dir * _fRayLen + origin;
-                    bBreak = any(step(abs(f3CurrPos - center), float3(5, 5, 5)));
-                    float3 f3EntryPointUSSpace = normalize(f3CurrPos - center);
-                    SampleDensity(f3EntryPointUSSpace, f3Dir, fNormalDensity);
-                    float fMultiSctr ;
-                    SampleSctr(f3EntryPointUSSpace, f3Dir, fMultiSctr);
-                    float fdotTheta = dot(_WorldSpaceLightPos0.xyz, -f3Dir);
-                    f4Result += BlendParticalRender(fNormalDensity, fMultiSctr, _fRayLen, fdotTheta, _LightColor0.rgb, unity_AmbientSky.rgb, f3EntryPointUSSpace);
+                    f3CurrPos += _fRayLen *ray;
+                    float dist = length(f3CurrPos - center);
+                    col.x += step(radius,dist)*0.5;
                 }
-                return f4Result;
+                float4 res = tex2D(_src, o.uv);
+                res.rgb += col;
+                return res;
             }
             ENDCG
         }
