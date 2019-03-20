@@ -23,7 +23,7 @@
             Cull Off
             Blend SrcAlpha OneMinusSrcAlpha
             CGPROGRAM
-            #define NUM_MAXSTEPS 128
+            #define NUM_MAXSTEPS 64
             #include "Lighting.cginc"
             #include "UnityCG.cginc"
             #include "VolumePrecompute.cginc"
@@ -32,6 +32,7 @@
 
             float _fRayLen;
             sampler2D _src;
+            sampler3D _3dTex;
             struct v2f
             {
                 float4 pos : SV_POSITION;
@@ -41,13 +42,14 @@
 
             inline float4 GetWorldPositionFromDepthValue( float2 uv, float linearDepth ) 
             {
-                float camPosZ = _ProjectionParams.x + _ProjectionParams.y* linearDepth;
+                float camPosZ = _ProjectionParams.y + _ProjectionParams.z* linearDepth;
                 float height = 2 * camPosZ / unity_CameraProjection[1][1];
                 float width = _ScreenParams.x / _ScreenParams.y * height;
                 float camPosX = width * uv.x - width / 2;
                 float camPosY = height * uv.y - height / 2;
-                float4 camPos = float4(camPosX, camPosY, -camPosZ, 1.0);
+                float4 camPos = float4(camPosX, camPosY, camPosZ, 1.0);
                 return mul(unity_CameraToWorld, camPos);
+                //return camPos;
             }
             v2f vert(appdata_base v)
             {
@@ -59,19 +61,21 @@
             }
             fixed4 frag(v2f o):SV_Target
             {
-                float3 f3CurrPos = float3(0, 0, 0);
-                const float3 center = float3(0,5,10);
-                const float radius = 20.0;
+                float3 f3CurrPos = _WorldSpaceCameraPos.xyz;
+                const float3 center = float3(0,0,10);
+                const float radius = 2.0;
                 float3 col = float3 (0, 0, 0);
-                float3 ray = normalize(GetWorldPositionFromDepthValue(o.uv,0.2).xyz - _WorldSpaceCameraPos.xyz);
+                float3 ray = normalize(GetWorldPositionFromDepthValue(o.uv,0).xyz - _WorldSpaceCameraPos.xyz);
                 for(int i = 1; i < NUM_MAXSTEPS; ++i)
                 {
                     f3CurrPos += _fRayLen *ray;
                     float dist = length(f3CurrPos - center);
-                    col.x += step(radius,dist)*0.5;
+                    col += step(dist, radius) *0.05;
                 }
                 float4 res = tex2D(_src, o.uv);
-                res.rgb += col;
+                float4 oth = tex3D(_3dTex, float3(o.uv,0));
+                //res = saturate(oth.r - 0.5 * (oth.g + oth.b + oth.a));
+                res = pow(oth.r * (1 - oth.g) * (1 - oth.b) * (1 - oth.a) * 1.8,0.8);
                 return res;
             }
             ENDCG

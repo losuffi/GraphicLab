@@ -20,6 +20,8 @@ public class ParticleGeneration : MonoBehaviour
     private float ScatteringCoeff;
     [SerializeField]
     private int ScatteringCount;
+    [SerializeField]
+    private Material shader;
 
     //[SerializeField]
     private RenderTexture Test3DTex;
@@ -104,14 +106,15 @@ public class ParticleGeneration : MonoBehaviour
     public RenderTexture Test3DTexutureWrite()
     {
         //Test3DTex.enableRandomWrite = true;
-        Test3DTex = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGBFloat);
+        Test3DTex = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGB32);
         Test3DTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
-        Test3DTex.volumeDepth = 2;
+        Test3DTex.volumeDepth = 1;
         Test3DTex.enableRandomWrite = true;
         Test3DTex.Create();
         int kernel = GenerationCS.FindKernel("Tex3DTest");
         GenerationCS.SetTexture(kernel, "tex", Test3DTex);
-        GenerationCS.Dispatch(kernel, Test3DTex.width / 32, Test3DTex.height / 32, 2);
+        GenerationCS.Dispatch(kernel, Test3DTex.width / 32, Test3DTex.height / 32, 1);
+        Shader.SetGlobalTexture("_3dTex",Test3DTex);
         return Test3DTex;
     }
 }

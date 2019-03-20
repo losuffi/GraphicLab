@@ -49,6 +49,11 @@ inline uint4 C2ToC4(uint2 coord, uint4 size)
     return res;
 }
 
+inline float Rand1D(float fn)
+{
+    return frac(sin(fn) * 1e5);
+}
+
 inline float Rand2D(float2 fInput)
 {
     return frac(sin(dot(fInput, float2(12.989, 53.321))) * 43574.422534);
@@ -59,16 +64,96 @@ inline float PerlinRand2D(float2 fInput)
     float2 fp = floor(fInput);
     float2 fi = frac(fInput);
     float2 u = fi * fi * (3.0 - 2.0 * fi);
-    return lerp(
-        lerp(Rand2D(fInput), Rand2D(fInput + float2(1.0, 0)), u.x),
-        lerp(Rand2D(fInput + float2(0, 1.0)), Rand2D(fInput + float2(1.0, 1.0)), u.x),  
-        u.y
-    );
+
+    float a = Rand2D(fInput);
+    float b = Rand2D(fInput + float2(1.0, 0));
+    float c = Rand2D(fInput + float2(0, 1.0));
+    float d = Rand2D(fInput + float2(1.0, 1.0));
+
+    return lerp(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
 }
 
-inline float PerlinRand3D(float3 fInput)
+inline float PerlinRand3D(float3 fInput, float3 seed)
 {
-    return PerlinRand2D(fInput.xy + fInput.z * normalize(float2(12.945, -78.563)));
+    const float3 f3step = seed;
+    float3 fp = floor(fInput);
+    float3 fi = frac(fInput);
+
+    float n = dot(fp, f3step);
+
+    float3 f3u = fi * fi * (3.0 - 2.0 * fi);
+
+    float a = Rand1D(n + dot(f3step, float3(0, 0, 0)));
+    float b = Rand1D(n + dot(f3step, float3(1, 0, 0)));
+    float c = Rand1D(n + dot(f3step, float3(0, 1, 0)));
+    float d = Rand1D(n + dot(f3step, float3(1, 1, 0)));
+    float e = Rand1D(n + dot(f3step, float3(0, 0, 1)));
+    float f = Rand1D(n + dot(f3step, float3(1, 0, 1)));
+    float g = Rand1D(n + dot(f3step, float3(0, 1, 1)));
+    float h = Rand1D(n + dot(f3step, float3(1, 1, 1)));
+    return lerp(
+        lerp(lerp(a,b,f3u.x),lerp(c,d,f3u.x),f3u.y),
+        lerp(lerp(e,f,f3u.x),lerp(g,h,f3u.x),f3u.y),
+        f3u.z);
+}
+
+inline float PerlinRand3D(float3 f3Input)
+{
+    const float3 f3step = float3(110, 241, 162);
+    return PerlinRand3D(f3Input, f3step);
+}
+
+inline float WorlyRand3D(float3 f3Input)
+{
+    float3 f3st = f3Input;
+    float3 f3Ist = floor(f3st);
+    float3 f3Fst = frac(f3st);
+    float mindist = 1.0;
+    for(int i= -1; i < 2; ++i)
+    {
+        for(int j = -1; j < 2; ++j)
+        {
+            for(int k = -1; k < 2; ++k)
+            {
+                float3 f3Neighb = float3(i,j,k);
+                float3 f3point = f3Ist + f3Neighb;
+                f3point =float3(PerlinRand3D(f3point,float3(12.3,56.9,-121.2)),PerlinRand3D(f3point,float3(52.2,-156.9,-25.2)),PerlinRand3D(f3point,float3(2.5,26.1,65.2)));
+                float3 f3diff = f3Neighb + f3point -f3Fst;
+                mindist = min(length(f3diff),mindist);
+            }
+        }
+    }
+    return mindist;
+}
+
+inline float OctaveWorly3D(float3 f3Input, int Octave = 6)
+{
+    float value = 0.0;
+    float fAmplitude = .5;
+    float frequency = 0.;
+    float3 f3st = f3Input;
+    for(int i = 0; i < Octave; ++i)
+    {
+        value += fAmplitude * WorlyRand3D(f3st);
+        f3st *= 2.;
+        fAmplitude *= .5;
+    }
+    return value;
+}
+
+inline float OctavePerlin3D(float3 f3Input, int Octave = 6)
+{
+    float value = 0.0;
+    float fAmplitude = .5;
+    float frequency = 0.;
+    float3 f3st = f3Input;
+    for(int i = 0; i < Octave; ++i)
+    {
+        value += fAmplitude * PerlinRand3D(f3st);
+        f3st *= 2.;
+        fAmplitude *= .5;
+    }
+    return value;
 }
 
 inline float2 F4ToF2(float4 coord, uint4 size)
@@ -151,7 +236,7 @@ float ComputeDensity(float3 f3CurrPos)
     float fMetabolDensity = GetMetabolDenstiy(fDistToCenter);
     float fDensity = 0;
     // + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos, 0.15, 1, 0.2)
-    fDensity = saturate(GetRandomDensity(f3CurrPos, 0.15, 5, 0.2));
+    fDensity = saturate(OctavePerlin3D(f3CurrPos, float3(1,1,1)));
     return fDensity;
 }
 
@@ -298,5 +383,5 @@ RWTexture3D<float4> tex;
 [numthreads(32,32,1)]
 void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID)
 {
-    tex[ui3id] = float4(0,1,0,1);
+    tex[ui3id] = float4(OctavePerlin3D(ui3id / float3(512,512,1) * 3.0), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,4), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,8), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,16));
 }
