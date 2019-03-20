@@ -383,5 +383,5 @@ RWTexture3D<float4> tex;
 [numthreads(32,32,1)]
 void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID)
 {
-    tex[ui3id] = float4(OctavePerlin3D(ui3id / float3(512,512,1) * 3.0), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,4), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,8), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,16));
+    tex[ui3id] = float4(OctavePerlin3D(ui3id / float3(512,512,1) * 3.0), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,2), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,4), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,8));
 }

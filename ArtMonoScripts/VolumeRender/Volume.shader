@@ -74,8 +74,11 @@
                 }
                 float4 res = tex2D(_src, o.uv);
                 float4 oth = tex3D(_3dTex, float3(o.uv,0));
-                //res = saturate(oth.r - 0.5 * (oth.g + oth.b + oth.a));
-                res = pow(oth.r * (1 - oth.g) * (1 - oth.b) * (1 - oth.a) * 1.8,0.8);
+                float worly = (oth.g + oth.b + oth.a);
+                res = saturate(oth.r * worly);
+                //res = oth;
+                //res = saturate(oth.r - 0.5 * );
+                //res = pow(oth.r * (1 - oth.g) * (1 - oth.b) * (1 - oth.a) * 1.8,0.8);
                 return res;
             }
             ENDCG
