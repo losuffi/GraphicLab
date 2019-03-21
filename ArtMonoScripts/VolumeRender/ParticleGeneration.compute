@@ -2,6 +2,7 @@
 #pragma kernel SingleScaterringLUTGenerator
 #pragma kernel MultiScaterringLUTGenerator
 #pragma kernel Tex3DTest
+#pragma kernel TexWeather
 #define PI 3.141592653
 #define PI2 6.283185306
 #define PIHalf 1.5707963265
@@ -54,23 +55,29 @@ inline float Rand1D(float fn)
     return frac(sin(fn) * 1e5);
 }
 
-inline float Rand2D(float2 fInput)
+inline float PerlinRand2D(float2 fInput ,float2 seed)
 {
-    return frac(sin(dot(fInput, float2(12.989, 53.321))) * 43574.422534);
+    const float2 f2step = seed;
+    float2 fp = floor(fInput);
+    float2 fi = frac(fInput);
+    
+    float2 f2u = fi * fi * (3.0 - 2.0 * fi);
+
+    float a = Rand1D(dot(f2step, fp + float2(0, 0)));
+    float b = Rand1D(dot(f2step, fp + float2(1, 0)));
+    float c = Rand1D(dot(f2step, fp + float2(0, 1)));
+    float d = Rand1D(dot(f2step, fp + float2(1, 1)));
+    return lerp(
+        lerp(a,b,f2u.x),
+        lerp(c,d,f2u.x),
+        f2u.y
+    );
 }
 
 inline float PerlinRand2D(float2 fInput)
 {
-    float2 fp = floor(fInput);
-    float2 fi = frac(fInput);
-    float2 u = fi * fi * (3.0 - 2.0 * fi);
-
-    float a = Rand2D(fInput);
-    float b = Rand2D(fInput + float2(1.0, 0));
-    float c = Rand2D(fInput + float2(0, 1.0));
-    float d = Rand2D(fInput + float2(1.0, 1.0));
-
-    return lerp(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+    const float2 f2step = float2(-53.23, 19.31);
+    return PerlinRand2D(fInput, f2step);
 }
 
 inline float PerlinRand3D(float3 fInput, float3 seed)
@@ -156,6 +163,37 @@ inline float OctavePerlin3D(float3 f3Input, int Octave = 6)
     return value;
 }
 
+inline float OctavePerlin2D(float2 f2Input, int Octave = 6)
+{
+    float value = 0.0;
+    float fAmplitude = .5;
+    float frequency = 0.;
+    float2 f2st = f2Input;
+    for(int i = 0; i < Octave; ++i)
+    {
+        value += fAmplitude * PerlinRand2D(f2st);
+        f2st *= 2.;
+        fAmplitude *= .5;
+    }
+    return value;
+}
+
+inline float OctavePerlin2D(float2 f2Input, float2 seed, int Octave = 6)
+{
+    float value = 0.0;
+    float fAmplitude = .5;
+    float frequency = 0.;
+    float2 f2st = f2Input;
+    for(int i = 0; i < Octave; ++i)
+    {
+        value += fAmplitude * PerlinRand2D(f2st, seed);
+        f2st *= 2.;
+        fAmplitude *= .5;
+    }
+    return value;
+}
+
+
 inline float2 F4ToF2(float4 coord, uint4 size)
 {
     float2 res;
@@ -236,7 +274,7 @@ float ComputeDensity(float3 f3CurrPos)
     float fMetabolDensity = GetMetabolDenstiy(fDistToCenter);
     float fDensity = 0;
     // + sqrt(fMetabolDensity)*GetRandomDensity(f3CurrPos, 0.15, 1, 0.2)
-    fDensity = saturate(OctavePerlin3D(f3CurrPos, float3(1,1,1)));
+    fDensity = saturate(OctavePerlin3D(f3CurrPos * 3) * (OctaveWorly3D(f3CurrPos*3,2)+OctaveWorly3D(f3CurrPos*3,4)+OctaveWorly3D(f3CurrPos*3,6)));
     return fDensity;
 }
 
@@ -380,8 +418,14 @@ void MultiScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
 }
 
 RWTexture3D<float4> tex;
+RWTexture2D<float4> weather;
 [numthreads(32,32,1)]
 void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID)
 {
-    tex[ui3id] = float4(OctavePerlin3D(ui3id / float3(512,512,1) * 3.0), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,2), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,4), OctaveWorly3D(ui3id / float3(512,512,1) * 3.0,8));
+    tex[ui3id] = float4(OctavePerlin3D(ui3id / float3(128,32,128) * 3.0), OctaveWorly3D(ui3id / float3(128,32,128) * 3.0,2), OctaveWorly3D(ui3id / float3(128,32,128) * 3.0,4), OctaveWorly3D(ui3id / float3(128,32,128) * 3.0,8));
+}
+[numthreads(32,32,1)]
+void TexWeather(uint2 id : SV_DISPATCHTHREADID)
+{
+    weather[id] = float4(OctavePerlin2D(id / float2(1024, 1024) * 9.0,float2(-17, 89), 4), OctavePerlin2D(id / float2(1024, 1024) * 9.0,float2(-77, 21), 8), OctavePerlin2D(id / float2(1024, 1024) * 9.0 ,float2(12, 35), 2), 1);
 }

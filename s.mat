@@ -8,12 +8,12 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: s
-  m_Shader: {fileID: 4800000, guid: 5d9253a1633aa144fa80cb4bc6eb189a, type: 3}
+  m_Shader: {fileID: 4800000, guid: b51259632dd073b45a61cb4e1cdc133d, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 3000
   stringTagMap: {}
   disabledShaderPasses:
   - DistortionVectors
@@ -23,6 +23,10 @@ Material:
     m_TexEnvs:
     - _BumpMap:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DensityLUT:
+        m_Texture: {fileID: 2800000, guid: 0e2105b9cd8702e46b9ccee657fc1da3, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
@@ -65,6 +69,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ScatteringLUT:
+        m_Texture: {fileID: 2800000, guid: aa399387174f86a4aa1186a17f1e0853, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _UnlitColorMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -72,6 +80,7 @@ Material:
     m_Floats:
     - _AlphaCutoff: 0.5
     - _AlphaCutoffEnable: 0
+    - _AttenuationCoff: 0.001
     - _BlendMode: 0
     - _BumpScale: 1
     - _CullMode: 2
@@ -94,6 +103,7 @@ Material:
     - _DistortionVectorScale: 2
     - _DoubleSidedEnable: 0
     - _DstBlend: 0
+    - _EarthRadius: 0.7
     - _EnableFogOnTransparent: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
@@ -103,7 +113,9 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
+    - _ParticleDensity: 100
     - _PreRefractionPass: 0
+    - _SampleRadiusScale: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -116,8 +128,13 @@ Material:
     - _UVSec: 0
     - _ZTestModeDistortion: 4
     - _ZWrite: 1
+    - _fRayLen: 1
     m_Colors:
+    - _CloudAmbientParams: {r: 0.5, g: 0.6, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _DensityLUTSize: {r: 32, g: 16, b: 32, a: 16}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 1}
+    - _LightAttenuation: {r: 0.01, g: 0.01, b: 0, a: 0}
+    - _ScatteringLUTSize: {r: 32, g: 16, b: 64, a: 1}
     - _UnlitColor: {r: 1, g: 1, b: 1, a: 1}

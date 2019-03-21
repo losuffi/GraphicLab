@@ -9,6 +9,7 @@ float _AttenuationCoff;
 float _EarthRadius;
 float2 _LightAttenuation;
 float2 _CloudAmbientParams;
+
 //---------------------------------
 //Define
 #define PI 3.141592653
@@ -25,6 +26,26 @@ inline float Atan2Abs(float fy,float fx)
     float oR = atan2(fy,fx);
     oR = oR * step(0, oR) + step(oR, 0) * (PI2 + oR);
     return oR;
+}
+
+inline int GetRaySphereIntersection(float3 f3ro, float3 f3rd, float3 f3center, float fRadius, out float2 f2RayIsecs)
+{
+    float3 f3BiDir= f3ro - f3center;
+    float A = dot(f3rd,f3rd);
+    float B = dot(f3BiDir,f3rd) * 2;
+    float C = dot(f3BiDir,f3BiDir) - fRadius * fRadius;
+    float D = B * B - 4 * A * C;
+
+    if(D < 0)
+    {
+        return 0;
+    }
+    else
+    {
+        D = sqrt(D);
+        f2RayIsecs = float2(-B - D , -B + D) / (2 * A);
+        return 1;
+    }
 }
 
 inline float2 F4ToF2(float4 coord, uint4 size)
@@ -81,7 +102,7 @@ inline void SampleSctr(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out
 inline float HGPhase(float dotTheta, float g)
 {
     float fTopPart  = 1 - g * g;
-    float fBottomPart = 4 * PI2 * pow(1 + g * g - 2 * g * dotTheta , 1.5);
+    float fBottomPart = 2 * PI2 * pow(abs(1 + g * g - 2 * g * dotTheta), 1.5);
     return fTopPart / fBottomPart;
 }
 

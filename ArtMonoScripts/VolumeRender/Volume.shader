@@ -2,17 +2,11 @@
 {
     Properties
     {
-        _DensityLUT("Density LUT",2D) ="black"{}
-        _ScatteringLUT("Scattering LUT",2D) ="black"{}
-        _SampleRadiusScale("Radius Scale",Float) = 1
-        _DensityLUTSize("Density LUT Size",Vector) = (32, 16, 32, 16)
-        _ScatteringLUTSize("Scattering LUT Size",Vector) = (32, 16, 64 ,1)
-        _ParticleDensity("Particle Density",Float) = 0.2
-        _AttenuationCoff("Attenuation Coff",Float) = 0.001
-        _EarthRadius("Ambient EarthRadius",Range(0,1)) = 0.7 
-        _LightAttenuation("Light Attenuation",Vector) =(0.01,0.01,0,0)
-        _CloudAmbientParams("Ambient Params",Vector) = (0.5, 0.6, 0 ,0)
-        _fRayLen("RayLen",Float) = 1
+        _MaxStep("Max Step",Int) = 64
+        _MaxHeight("Max Height",Float) = 1000
+        _MinHeight("Min Height",Float) = 400
+        _SigmaScattering("Sigma Scattering",Range(0,1)) = 0.1
+        _SigmaExtinction("Sigma Extinction",Range(0,1)) = 0.1
     }
     SubShader
     {
@@ -23,15 +17,19 @@
             Cull Off
             Blend SrcAlpha OneMinusSrcAlpha
             CGPROGRAM
-            #define NUM_MAXSTEPS 64
             #include "Lighting.cginc"
             #include "UnityCG.cginc"
             #include "VolumePrecompute.cginc"
             #pragma vertex vert
             #pragma fragment frag
 
-            float _fRayLen;
-            sampler2D _src;
+            float _MaxHeight;
+            float _MinHeight;
+            float _SigmaScattering;
+            float _SigmaExtinction;
+            float _MaxStep;
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+            sampler2D _src,_WeatherTex;
             sampler3D _3dTex;
             struct v2f
             {
@@ -62,23 +60,72 @@
             fixed4 frag(v2f o):SV_Target
             {
                 float3 f3CurrPos = _WorldSpaceCameraPos.xyz;
-                const float3 center = float3(0,0,10);
+                const float3 center = float3(0,3,10);
                 const float radius = 2.0;
-                float3 col = float3 (0, 0, 0);
-                float3 ray = normalize(GetWorldPositionFromDepthValue(o.uv,0).xyz - _WorldSpaceCameraPos.xyz);
-                for(int i = 1; i < NUM_MAXSTEPS; ++i)
+
+                float fdepth = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, o.uv));
+                float3 f3EndPoint = GetWorldPositionFromDepthValue(o.uv,fdepth).xyz;
+
+                float startFlag=1;
+                startFlag *=step(0,f3EndPoint.y);
+                float3 ray = normalize(f3EndPoint - _WorldSpaceCameraPos.xyz);
+                float2 f2innerCIntersecion, f2outCIntersecion;
+                float maxLen = length(f3EndPoint - _WorldSpaceCameraPos.xyz);
+                startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray, float3(0, -_MinHeight, 0), _MinHeight * 2, f2innerCIntersecion)-0.1);
+                startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray, float3(0, -_MaxHeight, 0), _MaxHeight * 2, f2outCIntersecion)-0.1);
+
+                startFlag *= step(0,maxLen - f2innerCIntersecion.y);
+                float4 src = tex2D(_src,o.uv);
+                if(!startFlag)
+                    return src;
+                maxLen = min(maxLen, f2outCIntersecion.y);
+
+                float3 Entry = f3CurrPos + ray * f2innerCIntersecion.y;
+                float3 Exit = f3CurrPos + ray * maxLen;
+
+                float3 f3stepLen = (Exit - Entry) / _MaxStep;
+                float fstepLen = length(f3stepLen);
+                float fscatteredLight = 0;
+                float ftransmittance = 1;
+                f3CurrPos = Entry;
+                [loop]
+                for(int i = 1; i < _MaxStep; ++i)
                 {
-                    f3CurrPos += _fRayLen *ray;
-                    float dist = length(f3CurrPos - center);
-                    col += step(dist, radius) *0.05;
+                    if(ftransmittance < 0.01)
+                        break;
+                    f3CurrPos += f3stepLen;
+                    //Get Density
+                    float3 f3weather = tex2D(_WeatherTex,abs(frac(f3CurrPos.xz/float2(1024,1024))));
+                    float fdensity = f3weather.r;
+                    //Height Signal
+                    float faltitudeStart = f3weather.b * _MaxHeight;
+                    float height = f3weather.g * (_MaxHeight - faltitudeStart) + faltitudeStart;
+                    float foneOverHeight = 1 / height;
+                    float faltitudeDiff = f3CurrPos.y - faltitudeStart;
+                    float fheightSignal = faltitudeDiff * (faltitudeDiff - height) * foneOverHeight * foneOverHeight * -4;                   
+                    //Shape
+                    float4 f4shape = tex3D(_3dTex, abs(frac(f3CurrPos/float3(1280,320,1280))));
+                    float fshape = f4shape.r * (f4shape.g + f4shape.b + f4shape.a);
+                    fdensity *= step(0, faltitudeStart);
+                    fdensity *= (1+saturate(fheightSignal));
+                    fdensity *= fshape;
+                    fdensity *= smoothstep(_MinHeight, _MaxHeight, f3CurrPos.y);
+
+                    float fSigmaS = _SigmaScattering * fdensity;
+                    float fSigmaE = _SigmaExtinction * fdensity;
+
+                    float dotTheta = dot(_WorldSpaceLightPos0.xyz,ray);
+                    float S = HGPhase(dotTheta, 0.1) * fSigmaS;
+                    float Tr = exp(-fSigmaE * fstepLen);
+
+                    float Sint = (S - S * Tr) / (fSigmaE+0.000001);
+                    fscatteredLight += ftransmittance * Sint;//ftransmittance * Sint;
+                    ftransmittance *= Tr;
                 }
-                float4 res = tex2D(_src, o.uv);
-                float4 oth = tex3D(_3dTex, float3(o.uv,0));
-                float worly = (oth.g + oth.b + oth.a);
-                res = saturate(oth.r * worly);
-                //res = oth;
-                //res = saturate(oth.r - 0.5 * );
-                //res = pow(oth.r * (1 - oth.g) * (1 - oth.b) * (1 - oth.a) * 1.8,0.8);
+                //return src+fscatteredLight;
+
+                float4 res = src * (1+float4(fscatteredLight * _LightColor0.rgb,1));
+
                 return res;
             }
             ENDCG

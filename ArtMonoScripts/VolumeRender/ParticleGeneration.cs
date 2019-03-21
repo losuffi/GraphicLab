@@ -25,7 +25,7 @@ public class ParticleGeneration : MonoBehaviour
 
     //[SerializeField]
     private RenderTexture Test3DTex;
-
+    private RenderTexture WeatherTex;
 
     private RenderTexture OpticalDepthLUTTemp;
     private RenderTexture SingleScatteringLUTTemp;
@@ -106,15 +106,23 @@ public class ParticleGeneration : MonoBehaviour
     public RenderTexture Test3DTexutureWrite()
     {
         //Test3DTex.enableRandomWrite = true;
-        Test3DTex = new RenderTexture(512, 512, 0, RenderTextureFormat.ARGB32);
+        Test3DTex = new RenderTexture(128, 32, 0, RenderTextureFormat.ARGB32);
         Test3DTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
-        Test3DTex.volumeDepth = 1;
+        Test3DTex.volumeDepth = 128;
         Test3DTex.enableRandomWrite = true;
         Test3DTex.Create();
         int kernel = GenerationCS.FindKernel("Tex3DTest");
         GenerationCS.SetTexture(kernel, "tex", Test3DTex);
-        GenerationCS.Dispatch(kernel, Test3DTex.width / 32, Test3DTex.height / 32, 1);
-        Shader.SetGlobalTexture("_3dTex",Test3DTex);
+        GenerationCS.Dispatch(kernel, Test3DTex.width / 32, Test3DTex.height / 32, Test3DTex.volumeDepth);
+        Shader.SetGlobalTexture("_3dTex", Test3DTex);
+
+        WeatherTex = new RenderTexture(1024, 1024, 0, RenderTextureFormat.ARGB32);
+        WeatherTex.enableRandomWrite = true;
+        WeatherTex.Create();
+        kernel = GenerationCS.FindKernel("TexWeather");
+        GenerationCS.SetTexture(kernel, "weather", WeatherTex);
+        GenerationCS.Dispatch(kernel, WeatherTex.width / 32, WeatherTex.height / 32, 1);
+        Shader.SetGlobalTexture("_WeatherTex", WeatherTex);
         return Test3DTex;
     }
 }
