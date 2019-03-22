@@ -102,7 +102,7 @@ inline void SampleSctr(float3 f3SampleEntryUSSpace, float3 f3ViewDirUSSpace, out
 inline float HGPhase(float dotTheta, float g)
 {
     float fTopPart  = 1 - g * g;
-    float fBottomPart = 2 * PI2 * pow(abs(1 + g * g - 2 * g * dotTheta), 1.5);
+    float fBottomPart = 2 * PI2 * pow((1 + g * g - 2 * g * dotTheta), 1.5);
     return fTopPart / fBottomPart;
 }
 

@@ -5,8 +5,12 @@
         _MaxStep("Max Step",Int) = 64
         _MaxHeight("Max Height",Float) = 1000
         _MinHeight("Min Height",Float) = 400
-        _SigmaScattering("Sigma Scattering",Range(0,1)) = 0.1
+        _SigmaScattering("Sigma Scattering",Range(0,1000)) = 0.1
         _SigmaExtinction("Sigma Extinction",Range(0,1)) = 0.1
+        _WethearCover("Weather Cover",Range(0,1)) = 0
+        _SecondIntensity("SecondIntensity",Range(0,200)) = 1
+        _PrimaryIntensity("PrimaryIntensity",Range(0,100)) = 50
+        _PrimaryIndics("PrimaryIndics",Range(0,200)) = 1
     }
     SubShader
     {
@@ -28,6 +32,10 @@
             float _SigmaScattering;
             float _SigmaExtinction;
             float _MaxStep;
+            float _WethearCover;
+            float _SecondIntensity;
+            float _PrimaryIntensity;
+            float _PrimaryIndics;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             sampler2D _src,_WeatherTex;
             sampler3D _3dTex;
@@ -57,6 +65,29 @@
                 o.uv = v.texcoord;
                 return o;
             }
+            inline float3 Repeat(float3 f3origin)
+            {
+                f3origin = abs(f3origin);
+                int3 i3p = floor(f3origin);
+                int3 i3flga =step(0.1,i3p % 2);
+                float3 fval = frac(f3origin);
+                return fval * i3flga + (1 - i3flga) * (1 - fval);
+            }
+            inline float2 Repeat(float2 f2origin)
+            {
+                f2origin = abs(f2origin);
+                int2 i2p = floor(f2origin);
+                int2 i2flga =step(0.1,i2p % 2);
+                float2 fval = frac(f2origin);
+                return fval; //* i2flga + (1 - i2flga) * (1 - fval);
+            }
+
+            inline float Remap(float value, float originMin, float orginMax, float newMin, float newMax)
+            {
+                return newMin + ((value - originMin)/(orginMax - originMin) * (newMax - newMin));
+            }
+            
+
             fixed4 frag(v2f o):SV_Target
             {
                 float3 f3CurrPos = _WorldSpaceCameraPos.xyz;
@@ -71,8 +102,8 @@
                 float3 ray = normalize(f3EndPoint - _WorldSpaceCameraPos.xyz);
                 float2 f2innerCIntersecion, f2outCIntersecion;
                 float maxLen = length(f3EndPoint - _WorldSpaceCameraPos.xyz);
-                startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray, float3(0, -_MinHeight, 0), _MinHeight * 2, f2innerCIntersecion)-0.1);
-                startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray, float3(0, -_MaxHeight, 0), _MaxHeight * 2, f2outCIntersecion)-0.1);
+                startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray, float3(0, -50000 , 0), _MinHeight + 50000, f2innerCIntersecion)-0.1);
+                startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray, float3(0, -50000, 0), _MaxHeight + 50000, f2outCIntersecion)-0.1);
 
                 startFlag *= step(0,maxLen - f2innerCIntersecion.y);
                 float4 src = tex2D(_src,o.uv);
@@ -88,6 +119,7 @@
                 float fscatteredLight = 0;
                 float ftransmittance = 1;
                 f3CurrPos = Entry;
+
                 [loop]
                 for(int i = 1; i < _MaxStep; ++i)
                 {
@@ -95,37 +127,40 @@
                         break;
                     f3CurrPos += f3stepLen;
                     //Get Density
-                    float3 f3weather = tex2D(_WeatherTex,abs(frac(f3CurrPos.xz/float2(1024,1024))));
-                    float fdensity = f3weather.r;
+                    float3 f3weather = tex2Dlod(_WeatherTex,float4(Repeat(f3CurrPos.xz/float2(2048,2048)),0,0));
+                    float fdensity = saturate(Remap(f3weather.r,_WethearCover,1.0, 0, 1.0));
                     //Height Signal
                     float faltitudeStart = f3weather.b * _MaxHeight;
                     float height = f3weather.g * (_MaxHeight - faltitudeStart) + faltitudeStart;
                     float foneOverHeight = 1 / height;
                     float faltitudeDiff = f3CurrPos.y - faltitudeStart;
                     float fheightSignal = faltitudeDiff * (faltitudeDiff - height) * foneOverHeight * foneOverHeight * -4;                   
+                    float posHeight = f3CurrPos.y / _MaxHeight;
                     //Shape
-                    float4 f4shape = tex3D(_3dTex, abs(frac(f3CurrPos/float3(1280,320,1280))));
-                    float fshape = f4shape.r * (f4shape.g + f4shape.b + f4shape.a);
-                    fdensity *= step(0, faltitudeStart);
-                    fdensity *= (1+saturate(fheightSignal));
+                    float4 f4shape = tex3Dlod(_3dTex,float4(Repeat(f3CurrPos/float3(1024,256,1024)),0));
+                    float fshape = Remap(f4shape.x, f4shape.y, 1.0, 0, 1.0);
+                    fdensity *= step(1e-4, faltitudeStart);
+                    //fdensity *= (0.2 +saturate(fheightSignal));
                     fdensity *= fshape;
-                    fdensity *= smoothstep(_MinHeight, _MaxHeight, f3CurrPos.y);
+
+                    if(fdensity<0.01)
+                        continue;
+                    //fdensity *= smoothstep(_MinHeight, _MaxHeight, f3CurrPos.y);
 
                     float fSigmaS = _SigmaScattering * fdensity;
                     float fSigmaE = _SigmaExtinction * fdensity;
-
-                    float dotTheta = dot(_WorldSpaceLightPos0.xyz,ray);
-                    float S = HGPhase(dotTheta, 0.1) * fSigmaS;
+                    fSigmaE = max(1e-8,fSigmaE);
                     float Tr = exp(-fSigmaE * fstepLen);
-
-                    float Sint = (S - S * Tr) / (fSigmaE+0.000001);
-                    fscatteredLight += ftransmittance * Sint;//ftransmittance * Sint;
+                    float dotTheta = dot(_WorldSpaceLightPos0.xyz,ray);
+                    float S = lerp(HGPhase(dotTheta, -0.5),HGPhase(dotTheta, 0.8),0.5) * fSigmaS;
+                    float Sintgrate = (S - S * Tr)/ fSigmaE;
+                    fscatteredLight += ftransmittance * Sintgrate;//ftransmittance * Sint;
                     ftransmittance *= Tr;
                 }
                 //return src+fscatteredLight;
-
-                float4 res = src * (1+float4(fscatteredLight * _LightColor0.rgb,1));
-
+                fscatteredLight = min(fscatteredLight, _PrimaryIntensity);
+                ftransmittance = pow(ftransmittance,_SecondIntensity);
+                float4 res = lerp(float4(fscatteredLight * _LightColor0.rgb, 1-ftransmittance) , src, saturate(ftransmittance));
                 return res;
             }
             ENDCG

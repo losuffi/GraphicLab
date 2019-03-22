@@ -74,6 +74,28 @@ inline float PerlinRand2D(float2 fInput ,float2 seed)
     );
 }
 
+inline float WorlyRand2D(float2 fInput)
+{
+    float2 f2st = fInput;
+    float2 f2Ist = floor(f2st);
+    float2 f2Fst = frac(f2st);
+    float mindist = 1.0;
+
+
+    for(int i= -1; i < 2; ++i)
+    {
+        for(int j = -1; j < 2; ++j)
+        {
+            float2 f2Neighb = float2(i,j);
+            float2 f2point = f2Ist + f2Neighb;
+            f2point =float2(PerlinRand2D(f2point,float2(12.3,56.9)),PerlinRand2D(f2point,float2(52.2,-156.9)));
+            float2 f2diff = f2Neighb + f2point -f2Fst;
+            mindist = min(length(f2diff),mindist);
+        }
+    }
+    return mindist;
+}
+
 inline float PerlinRand2D(float2 fInput)
 {
     const float2 f2step = float2(-53.23, 19.31);
@@ -143,6 +165,21 @@ inline float OctaveWorly3D(float3 f3Input, int Octave = 6)
     {
         value += fAmplitude * WorlyRand3D(f3st);
         f3st *= 2.;
+        fAmplitude *= .5;
+    }
+    return value;
+}
+
+inline float OctaveWorly2D(float2 f2Input, int Octave = 6)
+{
+    float value = 0.0;
+    float fAmplitude = .5;
+    float frequency = 0.;
+    float2 f2st = f2Input;
+    for(int i = 0; i < Octave; ++i)
+    {
+        value += fAmplitude * WorlyRand2D(f2st);
+        f2st *= 2.;
         fAmplitude *= .5;
     }
     return value;
@@ -417,15 +454,31 @@ void MultiScaterringLUTGenerator(uint2 ui2id: SV_DISPATCHTHREADID)
     IterateLUT[ui2id] = float4(fJ, 0, 0, 1);
 }
 
+inline float2 Repeat(float2 f2origin)
+{
+    return (frac(f2origin) + 1) * 0.5;
+}
+
+inline float Remap(float value, float originMin, float orginMax, float newMin, float newMax)
+{
+    return newMin + ((value - originMin)/(orginMax - originMin) * (newMax - newMin));
+}
 RWTexture3D<float4> tex;
 RWTexture2D<float4> weather;
 [numthreads(32,32,1)]
 void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID)
 {
-    tex[ui3id] = float4(OctavePerlin3D(ui3id / float3(128,32,128) * 3.0), OctaveWorly3D(ui3id / float3(128,32,128) * 3.0,2), OctaveWorly3D(ui3id / float3(128,32,128) * 3.0,4), OctaveWorly3D(ui3id / float3(128,32,128) * 3.0,8));
+    float perlinLow = OctavePerlin3D(ui3id / float3(128,32,128)*3.0);
+    float worlyLow = OctaveWorly3D(ui3id / float3(128,32,128)*3.0,4) +OctaveWorly3D(ui3id / float3(128,32,128)*3.0,8)+OctaveWorly3D(ui3id / float3(128,32,128)*3.0,16);
+    float perlinHign = OctavePerlin3D(ui3id / float3(128,32,128)*6.0, 16);
+    float worlyHigh = OctaveWorly3D(ui3id / float3(128,32,128)*6.0, 8) +OctaveWorly3D(ui3id / float3(128,32,128)*6.0,16)+OctaveWorly3D(ui3id / float3(128,32,128)*6.0,32);
+    tex[ui3id] = float4(Remap(perlinLow,1-worlyLow,1.0,0,1.0),Remap(perlinHign,1-worlyHigh,1.0,0,1.0) ,0 , 1);
 }
 [numthreads(32,32,1)]
 void TexWeather(uint2 id : SV_DISPATCHTHREADID)
 {
-    weather[id] = float4(OctavePerlin2D(id / float2(1024, 1024) * 9.0,float2(-17, 89), 4), OctavePerlin2D(id / float2(1024, 1024) * 9.0,float2(-77, 21), 8), OctavePerlin2D(id / float2(1024, 1024) * 9.0 ,float2(12, 35), 2), 1);
+    float3 perlinLow = float3(OctavePerlin2D(id / float2(1024, 1024) * 3.0,float2(-17, 89), 4), OctavePerlin2D(id / float2(1024, 1024) * 3.0,float2(-77, 21), 8), OctavePerlin2D(id / float2(1024, 1024) * 3.0 ,float2(12, 35), 2));
+    float worlyLow = OctaveWorly2D(id / float2(1024,1024)*3.0,4) +OctaveWorly2D(id / float2(1024,1024)*3.0,8)+OctaveWorly2D(id / float2(1024,1024)*3.0,16);
+    float cover_noise =Remap(perlinLow.x,1-worlyLow,1.0,0,1.0);
+    weather[id] = float4(cover_noise ,Remap(perlinLow.y,1-worlyLow,1.0,0,1.0),Remap(perlinLow.z,1-worlyLow,1.0,0,1.0),1);
 }
