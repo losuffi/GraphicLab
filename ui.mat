@@ -78,17 +78,20 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _MaxHeight: 1000
+    - _MaxHeight: 2600
     - _MaxStep: 32
     - _Metallic: 0
-    - _MinHeight: 200
+    - _MinHeight: 1500
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _ParticleDensity: 1
+    - _PrimaryIndics: 200
+    - _PrimaryIntensity: 0.811
     - _SampleRadiusScale: 0.5
-    - _SigmaExtinction: 0.03
-    - _SigmaScattering: 0.31
+    - _SecondIntensity: 122
+    - _SigmaExtinction: 0.18
+    - _SigmaScattering: 1
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -97,8 +100,10 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
+    - _Type: 0.57
     - _UVSec: 0
     - _UseUIAlphaClip: 0
+    - _WethearCover: 0.54
     - _ZWrite: 1
     - _fRayLen: 1
     m_Colors:
@@ -109,3 +114,4 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _LightAttenuation: {r: 0.1, g: 0.1, b: 0, a: 0}
     - _ScatteringLUTSize: {r: 32, g: 16, b: 64, a: 1}
+    - _WindSpeed: {r: 200, g: 0, b: 0, a: 0}

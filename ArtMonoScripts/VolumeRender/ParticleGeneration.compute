@@ -2,6 +2,7 @@
 #pragma kernel SingleScaterringLUTGenerator
 #pragma kernel MultiScaterringLUTGenerator
 #pragma kernel Tex3DTest
+#pragma kernel DetailTest
 #pragma kernel TexWeather
 #define PI 3.141592653
 #define PI2 6.283185306
@@ -461,24 +462,30 @@ inline float2 Repeat(float2 f2origin)
 
 inline float Remap(float value, float originMin, float orginMax, float newMin, float newMax)
 {
-    return newMin + ((value - originMin)/(orginMax - originMin) * (newMax - newMin));
+    return newMin + (((value - originMin)/(orginMax - originMin)) * (newMax - newMin));
 }
 RWTexture3D<float4> tex;
 RWTexture2D<float4> weather;
+RWTexture3D<float3> detailTex;
 [numthreads(32,32,1)]
-void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID)
+void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID, uint3 detailId : SV_GROUPID)
 {
     float perlinLow = OctavePerlin3D(ui3id / float3(128,32,128)*3.0);
-    float worlyLow = OctaveWorly3D(ui3id / float3(128,32,128)*3.0,4) +OctaveWorly3D(ui3id / float3(128,32,128)*3.0,8)+OctaveWorly3D(ui3id / float3(128,32,128)*3.0,16);
-    float perlinHign = OctavePerlin3D(ui3id / float3(128,32,128)*6.0, 16);
-    float worlyHigh = OctaveWorly3D(ui3id / float3(128,32,128)*6.0, 8) +OctaveWorly3D(ui3id / float3(128,32,128)*6.0,16)+OctaveWorly3D(ui3id / float3(128,32,128)*6.0,32);
-    tex[ui3id] = float4(Remap(perlinLow,1-worlyLow,1.0,0,1.0),Remap(perlinHign,1-worlyHigh,1.0,0,1.0) ,0 , 1);
+    float worlyLow = WorlyRand3D(ui3id / float3(128,32,128) * 6.0) *0.625 + WorlyRand3D(ui3id / float3(128,32,128)*12.0) *0.25 + WorlyRand3D(ui3id / float3(128,32,128)*24.0) * 0.125;
+    
+    //Remap(perlinLow,-(1-worlyLow),1.0,0,1.0)
+    tex[ui3id] = float4(Remap(perlinLow, worlyLow,1.0,0,1.0) , perlinLow ,1-worlyLow , 1);
+    
+}
+[numthreads(32,32,1)]
+void DetailTest(uint3 ui3id : SV_DISPATCHTHREADID)
+{
+    float3 worlyHigh = float3(WorlyRand3D(ui3id / float3(32,32,32)*8.0),WorlyRand3D(ui3id / float3(32,32,32)*16.0),WorlyRand3D(ui3id / float3(32,32,32)*32.0));
+    detailTex[ui3id] = float4(worlyHigh,1);
 }
 [numthreads(32,32,1)]
 void TexWeather(uint2 id : SV_DISPATCHTHREADID)
 {
     float3 perlinLow = float3(OctavePerlin2D(id / float2(1024, 1024) * 3.0,float2(-17, 89), 4), OctavePerlin2D(id / float2(1024, 1024) * 3.0,float2(-77, 21), 8), OctavePerlin2D(id / float2(1024, 1024) * 3.0 ,float2(12, 35), 2));
-    float worlyLow = OctaveWorly2D(id / float2(1024,1024)*3.0,4) +OctaveWorly2D(id / float2(1024,1024)*3.0,8)+OctaveWorly2D(id / float2(1024,1024)*3.0,16);
-    float cover_noise =Remap(perlinLow.x,1-worlyLow,1.0,0,1.0);
-    weather[id] = float4(cover_noise ,Remap(perlinLow.y,1-worlyLow,1.0,0,1.0),Remap(perlinLow.z,1-worlyLow,1.0,0,1.0),1);
+    weather[id] = float4(perlinLow.x , perlinLow.y ,1,1);
 }
