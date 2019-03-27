@@ -107,18 +107,20 @@ public class ParticleGeneration : MonoBehaviour
     public RenderTexture Test3DTexutureWrite()
     {
         //Test3DTex.enableRandomWrite = true;
-        Test3DTex = new RenderTexture(128, 32, 0, RenderTextureFormat.ARGB32);
+        Test3DTex = new RenderTexture(128, 128, 0, RenderTextureFormat.ARGB32);
         Test3DTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
         Test3DTex.volumeDepth = 128;
         Test3DTex.enableRandomWrite = true;
-        Test3DTex.wrapMode = TextureWrapMode.Repeat;
+        Test3DTex.wrapMode = TextureWrapMode.Mirror;
+        Test3DTex.filterMode = FilterMode.Trilinear;
         Test3DTex.Create();
 
         DetailTex = new RenderTexture(32, 32, 0, RenderTextureFormat.ARGB32);
         DetailTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
         DetailTex.volumeDepth = 32;
         DetailTex.enableRandomWrite = true;
-        DetailTex.wrapMode = TextureWrapMode.Repeat;
+        DetailTex.filterMode = FilterMode.Trilinear;
+        DetailTex.wrapMode = TextureWrapMode.Mirror;
         DetailTex.Create();
 
         int kernel = GenerationCS.FindKernel("Tex3DTest");
@@ -131,15 +133,16 @@ public class ParticleGeneration : MonoBehaviour
         Shader.SetGlobalTexture("_3dTex", Test3DTex);
         Shader.SetGlobalTexture("_DetailTex", DetailTex);
 
-        WeatherTex = new RenderTexture(1024, 1024, 0, RenderTextureFormat.ARGB32);
+        WeatherTex = new RenderTexture(128, 128, 0, RenderTextureFormat.ARGB32);
         WeatherTex.enableRandomWrite = true;
-        WeatherTex.wrapMode = TextureWrapMode.Repeat;
+        WeatherTex.wrapMode = TextureWrapMode.Mirror;
+        WeatherTex.filterMode = FilterMode.Trilinear;
         WeatherTex.Create();
         kernel = GenerationCS.FindKernel("TexWeather");
         GenerationCS.SetTexture(kernel, "weather", WeatherTex);
         GenerationCS.Dispatch(kernel, WeatherTex.width / 32, WeatherTex.height / 32, 1);
         Shader.SetGlobalTexture("_WeatherTex", WeatherTex);
-        return Test3DTex;
+        return WeatherTex;
     }
 }
 [System.Serializable]

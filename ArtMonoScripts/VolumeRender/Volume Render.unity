@@ -208,7 +208,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: f2859e6c50510bc4c9d2321eb8d10657, type: 2}
-  addCopy: {fileID: 0}
+  BlendShader: {fileID: 4800000, guid: deacd5cfc26781147bf8eae388b9a100, type: 3}
+  downSmple: 2
 --- !u!1 &1534494164
 GameObject:
   m_ObjectHideFlags: 0
