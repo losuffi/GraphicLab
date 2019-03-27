@@ -82,23 +82,24 @@ Material:
     - _Cutoff: 0.5
     - _DensityScale: 0.1
     - _DetailNormalMapScale: 1
-    - _DetailScale: 0.1
-    - _DirLightFactor: 0.7
+    - _DetailScale: 5
+    - _DirLightFactor: 1
     - _DstBlend: 0
     - _EarthRadius: 0.365
+    - _EverySampleJitter: 1
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
     - _HGBackG: -1
     - _HGFowardG: 1
     - _HighFreqModifier: 0.9
-    - _IndirLightFactor: 0.3
+    - _IndirLightFactor: 0.48
     - _LightConeRadius: 1
     - _LightStepLen: 50
-    - _MaxHeight: 22000
-    - _MaxStep: 128
+    - _MaxHeight: 5200
+    - _MaxStep: 256
     - _Metallic: 0
-    - _MinHeight: 9500
+    - _MinHeight: 1200
     - _Mode: 0
     - _OcclusionStrength: 1
     - _OpticalDepthFactor: 1
@@ -108,7 +109,7 @@ Material:
     - _PrimaryIntensity: 0.68
     - _SampleRadiusScale: 0.5
     - _SecondIntensity: 200
-    - _SigmaExtinction: 0.15
+    - _SigmaExtinction: 1
     - _SigmaPowder: 1
     - _SigmaScattering: 0
     - _SmoothnessTextureChannel: 0
@@ -119,11 +120,11 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _Threshole: 5
+    - _Threshole: 1.55
     - _Type: 0.5
     - _UVSec: 0
     - _UseUIAlphaClip: 0
-    - _WeatherScale: 0.001
+    - _WeatherScale: 0.1
     - _WethearCover: 0
     - _ZWrite: 1
     - _fRayLen: 1
@@ -138,4 +139,4 @@ Material:
     - _LightAttenuation: {r: 0.1, g: 0.1, b: 0, a: 0}
     - _ScatteringLUTSize: {r: 32, g: 16, b: 64, a: 1}
     - _SilverSpreadAndIntensity: {r: 0.69, g: 2.19, b: 0, a: 0}
-    - _WindSpeed: {r: 0, g: 0, b: 1000, a: 0}
+    - _WindSpeed: {r: 0, g: 0, b: 1010, a: 0}

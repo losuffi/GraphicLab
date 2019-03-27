@@ -28,6 +28,8 @@
         _OpticalDepthFactor("Optical Depth Factor",Range(0,1)) = 0.5
         _BlueNoise("2D BlueNoise",2D)="black"{}
         _Threshole("Threshole",Range(0,5)) = 1 
+
+        _EverySampleJitter("Every Jitter",Float) = 1
         //_WeatherTex("Weather Tex",2D)="black"{}
     }
     SubShader
@@ -48,7 +50,7 @@
             float _MinHeight;
 
             float _SigmaExtinction;
-            float _MaxStep;
+            float _MaxStep,_EverySampleJitter;
             float _WethearCover,_Threshole;
             float _LightConeRadius,_OpticalDepthFactor;
             float4 _CloudTopColor, _CloudBottomColor,_Randomness,_BlueNoise_TexelSize;
@@ -123,7 +125,7 @@
 
             inline float GetDensityHeightGradientForPoint(float Height, float3 weatherData)
             {
-                float a = step(0.9,weatherData.z) * Remap(Height, 0, 0.2, 0, 1.0) * Remap(Height, 0.3, 0.4, 1.0, 0);
+                float a = step(0.9,weatherData.z) * Remap(Height, 0, 0.2, 0, 1.0) * Remap(Height, 0.3, 0.5, 1.0, 0);
                 float b = step(0.9,weatherData.y) * Remap(Height, 0.4, 0.6, 0, 1.0) * Remap(Height, 0.6, 0.9, 1.0, 0);
                 float c = step(weatherData.y,0.2) * Remap(Height, 0.1, 0.3, 0, 1.0) * Remap(Height, 0.3, 0.6, 1.0, 0);
                 return a;
@@ -168,7 +170,7 @@
                 sampleDensity = saturate(Remap(sampleDensity, saturate(fHeight/cloudCover),1.0,0.0,1.0));
                 sampleDensity *= cloudCover;
 
-                float3 f3Detail = tex3Dlod(_DetailTex,float4(f3CurrPos * _DetailScale * scale,0));
+                float3 f3Detail = tex3Dlod(_DetailTex,float4((f3CurrPos + _Time.y * _WindSpeed.xyz) * _DetailScale * scale,0));
                 float fdetail = f3Detail.x * 0.25 + f3Detail.y * 0.125 + f3Detail.z *0.0625;
                 float highFreqModifier = lerp(1.0 - fdetail, fdetail, saturate(fHeight * 10.0));
                 
@@ -244,8 +246,8 @@
                 float zeroCount = 0;
                 int stepCount =1;
                 float3 offset = _Time.y * _WindSpeed.xyz;
-                Entry += f3stepLen * BIGSTEP * 0.75 *getRandomRayOffset((o.uv+_Randomness.xy)*_BlueNoise_TexelSize*_ScreenParams.xy);
-                f3CurrPos = Entry;
+                float sampleOffset = getRandomRayOffset((o.uv+_Randomness.xy)*_BlueNoise_TexelSize*_ScreenParams.xy);
+                f3CurrPos = Entry+f3stepLen * BIGSTEP * 0.75 * sampleOffset;;
                 [loop]
                 for(int i = 1; i < fNumStep; i+=stepCount)
                 {
@@ -256,6 +258,7 @@
                     float fHeight = GetHeightFractionForPoint(f3CurrPos + offset);
                     if(fHeight < 0 || fHeight>1)
                         break;
+                    f3CurrPos += f3stepLen * BIGSTEP * 0.2 * sampleOffset *_EverySampleJitter;
                     float3 weatherData = GetWeather(f3CurrPos + offset);
                     float fdensity =GetDensity(f3CurrPos + offset, weatherData, fHeight);
                     fdensity *=_OpticalDepthFactor;
@@ -286,7 +289,7 @@
                     {
                         zeroCount +=1;
                     }
-                    stepCount = zeroCount > 10 ? BIGSTEP : 1;
+                    stepCount = zeroCount > 5 ?  BIGSTEP : 1;
                     f3CurrPos += f3stepLen * stepCount;
                     //i+=(stepCount-1);
                 }
