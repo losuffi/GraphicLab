@@ -266,6 +266,7 @@ inline float RemapStandard(float value, float originMin, float originMax, float 
 RWTexture3D<float4> tex;
 RWTexture2D<float4> weather;
 RWTexture3D<float3> detailTex;
+bool IsLinearColorSpace;
 [numthreads(32,32,1)]
 void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID, uint3 detailId : SV_GROUPID)
 {
@@ -273,13 +274,15 @@ void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID, uint3 detailId : SV_GROUPID)
     float worlyLow = WorlyRand3D(ui3id / float3(128,32,128) * 6.0) *0.5 + WorlyRand3D(ui3id / float3(128,32,128)*12.0) *0.25 + WorlyRand3D(ui3id / float3(128,32,128)*24.0) * 0.125;
     
     //Remap(perlinLow,-(1-worlyLow),1.0,0,1.0)
-    tex[ui3id] = float4(Remap(perlinLow, -(1.0 - worlyLow * 2.0),1.0,0,1.0) , perlinLow ,1-worlyLow , 1);
+    float4 res =float4(Remap(perlinLow, -(1.0 - worlyLow * 2.0),1.0,0,1.0) , perlinLow ,1-worlyLow , 1);
+    tex[ui3id] = IsLinearColorSpace ? pow(res, 1/2.2) : res;
     
 }
 [numthreads(32,32,1)]
 void DetailTest(uint3 ui3id : SV_DISPATCHTHREADID)
 {
     float3 worlyHigh = float3(WorlyRand3D(ui3id / float3(32,32,32)*8.0),WorlyRand3D(ui3id / float3(32,32,32)*16.0),WorlyRand3D(ui3id / float3(32,32,32)*32.0));
+    worlyHigh = IsLinearColorSpace ? pow(worlyHigh, 1/2.2) : worlyHigh;
     detailTex[ui3id] = worlyHigh;
 }
 [numthreads(32,32,1)]
@@ -290,5 +293,8 @@ void TexWeather(uint2 id : SV_DISPATCHTHREADID)
 
     float worlyLow = WorlyRand2D(id / float2(128,128) * 12.0) * 0.5 + WorlyRand2D(id / float2(128,128)*24.0) *0.25 + WorlyRand2D(id / float2(128,128)*48.0) * 0.125;
     float cover = Remap(perlinLow.x, -(1.0 -worlyLow*2.0),1.0,0,1.0);
-    weather[id] = float4(RemapStandard(cover,0.4,1.0,0,1.0),1,1,1);
+
+    float4 res = float4(RemapStandard(cover,0.4,1.0,0,1.0),perlinLow.y,1,1);
+    res = IsLinearColorSpace ? pow(res, 1/2.2) : res;
+    weather[id] = res;
 }
