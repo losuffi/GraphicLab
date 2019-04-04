@@ -5,10 +5,11 @@
         _MaxStep("Max Step",Int) = 64
         _MaxHeight("Max Height",Float) = 1000
         _MinHeight("Min Height",Float) = 400
-        _SigmaExtinction("Sigma Extinction",Range(0,1)) = 0.1
+        _SigmaExtinction("Sigma Extinction",Range(0,5)) = 0.1
         _WethearCover("Weather Cover",Range(0,1)) = 0
         _WindSpeed("Wind Speed",Vector) = (0,0,0,0)
-
+        _WeatherSpeed("Weather Speed",Vector) = (0,0,0,0)
+        _DetailSpeed("Detail Speed",Vector) = (0,0,0,0)
         _WeatherScale("Weather Scale",Float) = 0.0001
         _DensityScale("Density Scale",Float) = 0.001
         _DetailScale("Detail Scale",Float) =0.01
@@ -25,7 +26,7 @@
         _HGBackG("Back G",Range(-1,1)) = -0.5
         _LightStepLen("Light Step Len",Float) = 1
         _LightConeRadius("Light ConeRadius",Range(0,1)) = 1
-        _OpticalDepthFactor("Optical Depth Factor",Range(0,1)) = 0.5
+        _OpticalDepthFactor("Optical Depth Factor",Range(0,10)) = 1
         _BlueNoise("2D BlueNoise",2D)="black"{}
         _Threshole("Threshole",Range(0,5)) = 1 
 
@@ -59,7 +60,7 @@
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             sampler2D _WeatherTex,_BlueNoise;
             sampler3D _3dTex,_DetailTex;
-            float4 _WindSpeed;
+            float4 _WindSpeed,_DetailSpeed,_WeatherSpeed;
             struct v2f
             {
                 float4 pos : SV_POSITION;
@@ -128,7 +129,7 @@
                 float a = step(0.9,weatherData.z) * Remap(Height, 0, 0.2, 0, 1.0) * Remap(Height, 0.3, 0.5, 1.0, 0);
                 float b = step(0.9,weatherData.y) * Remap(Height, 0.4, 0.6, 0, 1.0) * Remap(Height, 0.6, 0.9, 1.0, 0);
                 float c = step(weatherData.y,0.2) * Remap(Height, 0.1, 0.3, 0, 1.0) * Remap(Height, 0.3, 0.6, 1.0, 0);
-                return  a;// step(weatherData.y * 0.5,Height);
+                return a + b + c;
             }
 
             float BeerLambert(float opticalDepth)
@@ -147,12 +148,13 @@
             float GetLightEnergy(float opticalDepth, float dotTheta, float powderDensity)
             {
                 float beerPowder = 2.0 * BeerLambert(opticalDepth) * Powder(powderDensity, dotTheta);
-                float HG = max(HGPhase(dotTheta, _HGFowardG), HGPhase(dotTheta,_HGBackG))*0.1 + 0.8;
+                float HG = lerp(HGPhase(dotTheta, _HGFowardG), HGPhase(dotTheta,_HGBackG), 0.5);
                 return beerPowder * HG;
             }
 
             float3 GetWeather(float3 Pos, float lod)
             {
+                Pos += _WeatherSpeed * _Time.y;
                 float scale = 0.00001 + _WeatherScale * 0.0004;
                 float3 weatherData = tex2Dlod(_WeatherTex, float4(Pos.xz* scale,0,lod)).rgb;
                 weatherData.r =saturate(weatherData.r - _WethearCover);
@@ -161,6 +163,8 @@
 
             inline float GetDensity(float3 f3CurrPos,float3 f3weather ,float fHeight,float lod)
             {
+                f3CurrPos += _WindSpeed * _Time.y;
+
                 float scale = 0.00001 + _DensityScale * 0.0004;
                 float sampleDensity = tex3Dlod(_3dTex,float4(f3CurrPos * scale,0)).r;
                 sampleDensity = Remap(sampleDensity * pow(1.2 - fHeight, 0.1),0.1,1.0,0,1.0);
@@ -170,9 +174,9 @@
                 sampleDensity = saturate(Remap(sampleDensity, saturate(fHeight/cloudCover),1.0,0.0,1.0));
                 sampleDensity *= cloudCover;
 
-                float3 f3Detail = tex3Dlod(_DetailTex,float4((f3CurrPos + _Time.y * _WindSpeed.xyz) * _DetailScale * scale,0));
+                float3 f3Detail = tex3Dlod(_DetailTex,float4((f3CurrPos + _Time.y * _DetailSpeed) * _DetailScale * scale,0));
                 float fdetail = f3Detail.x * 0.25 + f3Detail.y * 0.125 + f3Detail.z *0.0625;
-                float highFreqModifier = lerp(1.0 - fdetail, fdetail, saturate(fHeight * 10.0));
+                float highFreqModifier = lerp(fdetail,1.0 - fdetail, saturate(fHeight * 10.0));
                 
                 sampleDensity = Remap(sampleDensity, highFreqModifier *_HighFreqModifier, 1.0, 0.0, 1.0);
                 return max(sampleDensity, 0.0);
@@ -221,22 +225,22 @@
                 float3 f3EndPoint = GetWorldPositionFromDepthValue(o.uv,fdepth).xyz;
 
                 float startFlag=1;
-                startFlag *=step(0,f3EndPoint.y);
                 float3 ray = normalize(f3EndPoint - _WorldSpaceCameraPos.xyz);
                 float2 f2innerCIntersecion, f2outCIntersecion;
                 float maxLen = distance(f3EndPoint,_WorldSpaceCameraPos.xyz);
-                maxLen = step(0.99,fdepth) * 10000 + maxLen;
+                maxLen = step(0.99,fdepth) * 100000 + maxLen;
                 startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray,_WorldSpaceCameraPos.xyz+float3(0, -500000, 0), _MinHeight + 500000, f2innerCIntersecion)-0.1);
                 startFlag *= step(0,GetRaySphereIntersection(f3CurrPos, ray,_WorldSpaceCameraPos.xyz+float3(0, -500000, 0), _MaxHeight + 500000, f2outCIntersecion)-0.1);
 
                 startFlag *= step(0,maxLen - f2innerCIntersecion.y);
-                if(!startFlag)
-                    return 0;
+                
                 maxLen = min(maxLen, f2outCIntersecion.y);
 
                 float3 Entry = f3CurrPos + ray * f2innerCIntersecion.y;
                 float3 Exit = f3CurrPos + ray * maxLen;
-
+                startFlag = step(0, Exit.y);
+                if(!startFlag)
+                    return 0;
                 float fNumStep = lerp(_MaxStep * 0.5, _MaxStep, ray.y);
                 
                 float3 f3stepLen = (Exit - Entry) / fNumStep;
@@ -246,27 +250,28 @@
                 int stepCount =1;
                 float lod = 1;
                 float dist = 0;
-                float3 offset = _Time.y * _WindSpeed.xyz;
+                float3 offset = 0;
                 float sampleOffset = getRandomRayOffset((o.uv+_Randomness.xy)*_BlueNoise_TexelSize*_ScreenParams.xy);
-                f3CurrPos = Entry+f3stepLen * BIGSTEP * 0.75 * sampleOffset;;
+                f3CurrPos = Entry+f3stepLen * BIGSTEP * 0.55 * sampleOffset;
+                
                 [loop]
                 for(int i = 1; i < fNumStep; i+=stepCount)
                 {
                     f3CurrPos += f3stepLen * BIGSTEP * 0.2 * sampleOffset *_EverySampleJitter;
                     dist = distance(f3CurrPos,Entry);
                     lod =saturate(Remap(dist,0,maxLen,0,1));
-                    lod = 1 + lod * 6;
+                    lod = 1 + lod * 6 *saturate(Remap((1-ray.y),0.2,1,0,1));
                     if(dist > maxLen)
                         break;
                     if(fscatteredLight.a >=0.99)
                         break;
-                    float fHeight = GetHeightFractionForPoint(f3CurrPos + offset);
+                    float fHeight = GetHeightFractionForPoint(f3CurrPos);
                     if(fHeight < 0 || fHeight>1)
                         break;
                     
-                    float3 weatherData = GetWeather(f3CurrPos + offset,lod);
-                    float fdensity =GetDensity(f3CurrPos + offset, weatherData, fHeight,lod);
-                    fdensity = fdensity * _OpticalDepthFactor * saturate(1 - (lod * 6)/(42)); 
+                    float3 weatherData = GetWeather(f3CurrPos,lod);
+                    float fdensity =GetDensity(f3CurrPos, weatherData, fHeight,lod);
+                    fdensity = fdensity * _OpticalDepthFactor * exp(-lod); 
                     if(weatherData.r <= 0.1)
                     {
                         f3CurrPos += f3stepLen * stepCount;
@@ -278,13 +283,13 @@
                         {
                             i-= stepCount -1;
                             f3CurrPos -= f3stepLen * (stepCount -1);
-                            weatherData = GetWeather(f3CurrPos + offset,lod);
-                            fHeight =GetHeightFractionForPoint(f3CurrPos + offset);
-                            fdensity = GetDensity(f3CurrPos + offset, weatherData,fHeight,lod);
+                            weatherData = GetWeather(f3CurrPos,lod);
+                            fHeight =GetHeightFractionForPoint(f3CurrPos);
+                            fdensity = GetDensity(f3CurrPos, weatherData,fHeight,lod);
                         }
                         float3 ambient = lerp(_CloudBottomColor.xyz,_CloudTopColor.xyz,fHeight) * _IndirLightFactor;
                         float dotTheta = dot(_WorldSpaceLightPos0.xyz,ray);
-                        float LightCol = EvaluateLight(f3CurrPos + offset, dotTheta, fdensity, weatherData, fHeight,lod) *_DirLightFactor;
+                        float LightCol = EvaluateLight(f3CurrPos, dotTheta, fdensity, weatherData, fHeight,lod) *_DirLightFactor;
                         float4 particleCol = fdensity;
                         particleCol.rgb = LightCol + ambient;
                         particleCol.rgb *= particleCol.a;

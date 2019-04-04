@@ -18,11 +18,11 @@ public class ParticleGeneration : MonoBehaviour
     public RenderTexture Test3DTexutureWrite()
     {
         //Test3DTex.enableRandomWrite = true;
-        Test3DTex = new RenderTexture(128, 128, 0, RenderTextureFormat.ARGB32);
+        Test3DTex = new RenderTexture(256, 256, 0, RenderTextureFormat.ARGB32);
         Test3DTex.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
-        Test3DTex.volumeDepth = 128;
+        Test3DTex.volumeDepth = 256;
         Test3DTex.enableRandomWrite = true;
-        Test3DTex.wrapMode = TextureWrapMode.Mirror;
+        Test3DTex.wrapMode = TextureWrapMode.Repeat;
         Test3DTex.filterMode = FilterMode.Trilinear;
         Test3DTex.useMipMap = true;
         Test3DTex.autoGenerateMips =false;
@@ -33,7 +33,7 @@ public class ParticleGeneration : MonoBehaviour
         DetailTex.volumeDepth = 32;
         DetailTex.enableRandomWrite = true;
         DetailTex.filterMode = FilterMode.Trilinear;
-        DetailTex.wrapMode = TextureWrapMode.Mirror;
+        DetailTex.wrapMode = TextureWrapMode.Repeat;
         DetailTex.Create();
 
         int kernel = GenerationCS.FindKernel("Tex3DTest");
@@ -47,9 +47,9 @@ public class ParticleGeneration : MonoBehaviour
         Shader.SetGlobalTexture("_3dTex", Test3DTex);
         Shader.SetGlobalTexture("_DetailTex", DetailTex);
 
-        WeatherTex = new RenderTexture(128, 128, 0, RenderTextureFormat.ARGB32);
+        WeatherTex = new RenderTexture(1024, 1024, 0, RenderTextureFormat.ARGBHalf);
         WeatherTex.enableRandomWrite = true;
-        WeatherTex.wrapMode = TextureWrapMode.Mirror;
+        WeatherTex.wrapMode = TextureWrapMode.Repeat;
         WeatherTex.filterMode = FilterMode.Trilinear;
         WeatherTex.useMipMap =true;
         WeatherTex.autoGenerateMips = false;

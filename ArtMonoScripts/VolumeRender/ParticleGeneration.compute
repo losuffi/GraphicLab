@@ -32,8 +32,22 @@ inline uint4 C2ToC4(uint2 coord, uint4 size)
 
 inline float Rand1D(float fn)
 {
-    return frac(sin(fn) * 1e5);
+    
+    return frac(sin(fn + 21.42321) * 1e5);
 }
+
+inline float TileRand1D(float2 fn, float scale, float2 seed)
+{
+    fn = fmod(fn, scale);
+    return frac(sin(dot(fn,seed)) * 1e5);
+}
+
+inline float TileRand1D(float3 fn, float scale, float3 seed)
+{
+    fn = fmod(fn, scale);
+    return frac(sin(dot(fn,seed)) * 1e5);
+}
+
 
 inline float PerlinRand2D(float2 fInput ,float2 seed)
 {
@@ -47,6 +61,26 @@ inline float PerlinRand2D(float2 fInput ,float2 seed)
     float b = Rand1D(dot(f2step, fp + float2(1, 0)));
     float c = Rand1D(dot(f2step, fp + float2(0, 1)));
     float d = Rand1D(dot(f2step, fp + float2(1, 1)));
+    return lerp(
+        lerp(a,b,f2u.x),
+        lerp(c,d,f2u.x),
+        f2u.y
+    );
+}
+
+inline float TilePerlinRand2D(float2 f2Input,float fSize, float2 f2Seed)
+{
+    const float2 f2step = f2Seed;
+    f2Input *= fSize;
+    float2 fp = floor(f2Input);
+    float2 fi = frac(f2Input);
+    
+    float2 f2u = fi * fi * (3.0 - 2.0 * fi);
+
+    float a = TileRand1D(fp, fSize, f2Seed);
+    float b = TileRand1D(fp + float2(1.0, 0.0), fSize, f2Seed);
+    float c = TileRand1D(fp + float2(0.0, 1.0), fSize, f2Seed);
+    float d = TileRand1D(fp + float2(1.0, 1.0), fSize, f2Seed);
     return lerp(
         lerp(a,b,f2u.x),
         lerp(c,d,f2u.x),
@@ -76,6 +110,30 @@ inline float WorlyRand2D(float2 fInput)
     return mindist;
 }
 
+inline float TileWorlyRand2D(float2 fInput, float scale)
+{
+    fInput *=scale;
+    float2 f2st = fInput;
+    float2 f2Ist = floor(f2st);
+    float2 f2Fst = frac(f2st);
+    float mindist = 1.0;
+
+
+    for(int i= -1; i < 2; ++i)
+    {
+        for(int j = -1; j < 2; ++j)
+        {
+            float2 f2Neighb = float2(i,j);
+            float2 f2point = f2Ist + f2Neighb;
+            f2point = fmod(f2point,scale);
+            f2point =float2(TilePerlinRand2D(f2point/scale,scale,float2(12.3,56.9)),TilePerlinRand2D(f2point/scale, scale,float2(52.2,-156.9)));
+            float2 f2diff = f2Neighb + f2point -f2Fst;
+            mindist = min(length(f2diff),mindist);
+        }
+    }
+    return mindist;
+}
+
 inline float PerlinRand2D(float2 fInput)
 {
     const float2 f2step = float2(-53.23, 19.31);
@@ -88,18 +146,41 @@ inline float PerlinRand3D(float3 fInput, float3 seed)
     float3 fp = floor(fInput);
     float3 fi = frac(fInput);
 
-    float n = dot(fp, f3step);
+    float3 f3u = fi * fi * (3.0 - 2.0 * fi);
+
+    float a = Rand1D(dot(f3step,fp + float3(0, 0, 0)));
+    float b = Rand1D(dot(f3step,fp + float3(1, 0, 0)));
+    float c = Rand1D(dot(f3step,fp + float3(0, 1, 0)));
+    float d = Rand1D(dot(f3step,fp + float3(1, 1, 0)));
+    float e = Rand1D(dot(f3step,fp + float3(0, 0, 1)));
+    float f = Rand1D(dot(f3step,fp + float3(1, 0, 1)));
+    float g = Rand1D(dot(f3step,fp + float3(0, 1, 1)));
+    float h = Rand1D(dot(f3step,fp + float3(1, 1, 1)));
+    return lerp(
+        lerp(lerp(a,b,f3u.x),lerp(c,d,f3u.x),f3u.y),
+        lerp(lerp(e,f,f3u.x),lerp(g,h,f3u.x),f3u.y),
+        f3u.z);
+}
+
+inline float TilePerlinRand3D(float3 fInput, float scale, float3 seed)
+{
+    const float3 f3step = seed;
+    fInput *= scale;
+    float3 fp = floor(fInput);
+    float3 fi = frac(fInput);
+    //fp = fmod(fp,scale);
+    //float n = dot(fp, f3step);
 
     float3 f3u = fi * fi * (3.0 - 2.0 * fi);
 
-    float a = Rand1D(n + dot(f3step, float3(0, 0, 0)));
-    float b = Rand1D(n + dot(f3step, float3(1, 0, 0)));
-    float c = Rand1D(n + dot(f3step, float3(0, 1, 0)));
-    float d = Rand1D(n + dot(f3step, float3(1, 1, 0)));
-    float e = Rand1D(n + dot(f3step, float3(0, 0, 1)));
-    float f = Rand1D(n + dot(f3step, float3(1, 0, 1)));
-    float g = Rand1D(n + dot(f3step, float3(0, 1, 1)));
-    float h = Rand1D(n + dot(f3step, float3(1, 1, 1)));
+    float a = TileRand1D(fp,scale,seed);
+    float b = TileRand1D(fp+float3(1, 0, 0),scale,seed);
+    float c = TileRand1D(fp+float3(0, 1, 0),scale,seed);
+    float d = TileRand1D(fp+float3(1, 1, 0),scale,seed);
+    float e = TileRand1D(fp+float3(0, 0, 1),scale,seed);
+    float f = TileRand1D(fp+float3(1, 0, 1),scale,seed);
+    float g = TileRand1D(fp+float3(0, 1, 1),scale,seed);
+    float h = TileRand1D(fp+float3(1, 1, 1),scale,seed);
     return lerp(
         lerp(lerp(a,b,f3u.x),lerp(c,d,f3u.x),f3u.y),
         lerp(lerp(e,f,f3u.x),lerp(g,h,f3u.x),f3u.y),
@@ -127,6 +208,31 @@ inline float WorlyRand3D(float3 f3Input)
                 float3 f3Neighb = float3(i,j,k);
                 float3 f3point = f3Ist + f3Neighb;
                 f3point =float3(PerlinRand3D(f3point,float3(12.3,56.9,-121.2)),PerlinRand3D(f3point,float3(52.2,-156.9,-25.2)),PerlinRand3D(f3point,float3(2.5,26.1,65.2)));
+                float3 f3diff = f3Neighb + f3point -f3Fst;
+                mindist = min(length(f3diff),mindist);
+            }
+        }
+    }
+    return mindist;
+}
+
+inline float TileWorlyRand3D(float3 f3Input, float scale)
+{
+    f3Input *= scale;
+    float3 f3st = f3Input;
+    float3 f3Ist = floor(f3st);
+    float3 f3Fst = frac(f3st);
+    float mindist = 1.0;
+    for(int i= -1; i < 2; ++i)
+    {
+        for(int j = -1; j < 2; ++j)
+        {
+            for(int k = -1; k < 2; ++k)
+            {
+                float3 f3Neighb = float3(i,j,k);
+                float3 f3point = f3Ist + f3Neighb;
+                f3point = fmod(f3point,scale);
+                f3point =float3(TilePerlinRand3D(f3point/scale,scale,float3(12.3,56.9,-121.2)),TilePerlinRand3D(f3point/scale,scale,float3(52.2,-156.9,-25.2)),TilePerlinRand3D(f3point/scale,scale,float3(2.5,26.1,65.2)));
                 float3 f3diff = f3Neighb + f3point -f3Fst;
                 mindist = min(length(f3diff),mindist);
             }
@@ -210,6 +316,37 @@ inline float OctavePerlin2D(float2 f2Input, float2 seed, int Octave = 6)
     return value;
 }
 
+inline float TileOctavePerlin2D(float2 f2Input,float fSize , float2 seed, int Octave = 6)
+{
+    float value = 0.0;
+    float fAmplitude = .5;
+    float frequency = 0.;
+    f2Input = fmod(f2Input, fSize);
+    float2 f2st = f2Input;
+    for(int i = 0; i < Octave; ++i)
+    {
+        value += fAmplitude * TilePerlinRand2D(f2st, fSize, seed);
+        fSize *= 2.;
+        fAmplitude *= .5;
+    }
+    return min(value,1.0);
+}
+
+inline float TileOctavePerlin3D(float3 f3Input,float fSize , float3 seed, int Octave = 6)
+{
+    float value = 0.0;
+    float fAmplitude = .5;
+    float frequency = 0.;
+    f3Input = fmod(f3Input, fSize);
+    float3 f3st = f3Input;
+    for(int i = 0; i < Octave; ++i)
+    {
+        value += fAmplitude * TilePerlinRand3D(f3st, fSize, seed);
+        fSize *= 2.;
+        fAmplitude *= .5;
+    }
+    return min(value,1.0);
+}
 
 inline float2 F4ToF2(float4 coord, uint4 size)
 {
@@ -270,31 +407,30 @@ bool IsLinearColorSpace;
 [numthreads(32,32,1)]
 void Tex3DTest(uint3 ui3id: SV_DISPATCHTHREADID, uint3 detailId : SV_GROUPID)
 {
-    float perlinLow = OctavePerlin3D(ui3id / float3(128,32,128)*3.0);
-    float worlyLow = WorlyRand3D(ui3id / float3(128,32,128) * 6.0) *0.5 + WorlyRand3D(ui3id / float3(128,32,128)*12.0) *0.25 + WorlyRand3D(ui3id / float3(128,32,128)*24.0) * 0.125;
+    float perlinLow = TileOctavePerlin3D(ui3id / float3(256,256,256),6.0,float3(-153.11235,12.4457,9.154));
+    float worlyLow = TileWorlyRand3D(ui3id / float3(256,256,256), 6) *0.5 + TileWorlyRand3D(ui3id / float3(256,256,256),12.0) *0.25 + TileWorlyRand3D(ui3id / float3(256,256,256),24.0) * 0.125;
     
     //Remap(perlinLow,-(1-worlyLow),1.0,0,1.0)
-    float4 res =float4(Remap(perlinLow, -(1.0 - worlyLow * 2.0),1.0,0,1.0) , perlinLow ,1-worlyLow , 1);
+    float4 res =float4(Remap(perlinLow, 0,1.0,0,1.0) , perlinLow ,1-worlyLow , 1);
     tex[ui3id] = IsLinearColorSpace ? pow(res, 1/2.2) : res;
     
 }
 [numthreads(32,32,1)]
 void DetailTest(uint3 ui3id : SV_DISPATCHTHREADID)
 {
-    float3 worlyHigh = float3(WorlyRand3D(ui3id / float3(32,32,32)*8.0),WorlyRand3D(ui3id / float3(32,32,32)*16.0),WorlyRand3D(ui3id / float3(32,32,32)*32.0));
+    float3 worlyHigh = float3(TileWorlyRand3D(ui3id / float3(32,32,32),16.0),TileWorlyRand3D(ui3id / float3(32,32,32),32.0),TileWorlyRand3D(ui3id / float3(32,32,32),64.0));
     worlyHigh = IsLinearColorSpace ? pow(worlyHigh, 1/2.2) : worlyHigh;
     detailTex[ui3id] = worlyHigh;
 }
 [numthreads(32,32,1)]
 void TexWeather(uint2 id : SV_DISPATCHTHREADID)
 {
-    float3 perlinLow = float3(OctavePerlin2D(id / float2(128, 128) * 6.0,float2(-17, 89), 6), OctavePerlin2D(id / float2(128, 128) * 3.0,float2(-77, 21), 8), OctavePerlin2D(id / float2(128, 128) * 3.0 ,float2(12, 35), 2));
-    //weather[id] = float4(perlinLow.x , perlinLow.y ,1,1);
+    float3 perlinLow = float3(TileOctavePerlin2D(id / float2(1024, 1024), 12.0,float2(-17, 89), 6), TileOctavePerlin2D(id / float2(1024, 1024), 12.0,float2(-77, 21), 8), TileOctavePerlin2D(id / float2(1024, 1024) , 3.0 ,float2(12, 35), 2));
 
-    float worlyLow = WorlyRand2D(id / float2(128,128) * 12.0) * 0.5 + WorlyRand2D(id / float2(128,128)*24.0) *0.25 + WorlyRand2D(id / float2(128,128)*48.0) * 0.125;
-    float cover = Remap(perlinLow.x, -(1.0 -worlyLow*2.0),1.0,0,1.0);
+    float worlyLow = TileWorlyRand2D(id / float2(1024,1024),12) + TileWorlyRand2D(id / float2(1024,1024),24) * 0.625 + TileWorlyRand2D(id / float2(1024,1024),48) *0.25 + TileWorlyRand2D(id / float2(1024,1024),96.0) * 0.125;
+    float cover = Remap(perlinLow.x, -(1.0 -worlyLow),1.0,0,1.0);
 
-    float4 res = float4(RemapStandard(cover,0.4,1.0,0,1.0),perlinLow.y,1,1);
+    float4 res = float4(RemapStandard(cover,0.25,1.0,0,1.0),perlinLow.y,1,1);
     res = IsLinearColorSpace ? pow(res, 1/2.2) : res;
     weather[id] = res;
 }
